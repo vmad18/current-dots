@@ -198,20 +198,8 @@
   "custom/cycle_wall":{
     "format": "󰣇 ",
     // "interval": 1,
-    "on-click": "python3 ~/.config/sys-scripts/background/background.py",
+    "on-click": "python3 ~/.config/sys-scripts/background/background_only.py",
     "tooltip": false
   }
 }
 
-
-  // "custom/power": {
-  //   "format": "⏻ ",
-  //   "tooltip": false,
-  //   "on-click": "~/.config/hypr/scripts/powermenu.sh"
-  // },
-
-
-  // "custom/menu": {
-  //   "tooltip": false,
-  //   "on-click": "rofi -show"
-  // },

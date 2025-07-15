@@ -11,7 +11,7 @@
   margin: 0px; */
 }
 
-@define-color backgroundlight rgba(150, 150, 150, 0.25);
+@define-color backgroundlight rgba(150, 150, 150, 0.1);
 @define-color backgrounddark rgba(150, 150, 150, 0.1);
 @define-color workspacesbackground1 rgba(150, 150, 150, 0.1);
 @define-color workspacesbackground2 rgba(150, 150, 150, 0.1);
@@ -25,12 +25,10 @@
 
 
 window#waybar {
-    background-color: rgba(150,150,150,0.00);
+    background-color: rgba(0,0,0,0.8);
     border-bottom: 0px solid #ffffff;
-    /* border: none; */
-    /* border-radius: 18px;                   */
-    /* margin: 6px;                           */
-    /* padding: 6px 12px;      */
+    /* color: #FFFFFF; */
+    background: transparent;
     transition-property: background-color;
     transition-duration: .5s;
 }
@@ -125,11 +123,7 @@ window#waybar {
 
 
 tooltip {
-  background: @backgroundlight;
-   
-  transition-property: background-color;
-  transition-duration: .5s;
-  /* ;@tip; */
+  background: @tip;
   border-radius: 10px;
   border: 1.5px solid @accent;
 }
@@ -247,8 +241,7 @@ tooltip {
 
 #clock {
   /* background: transparent;  */
-  background: rgba(155, 214, 255, 0.6); 
-  /* background-color: rgba(155, 214, 255, 0.05); */
+  /* background: rgba(155, 214, 255, .47);  */
   /* @accent ; */
   border: 1.8px @bg2;
   /* opacity: 0.3; */
