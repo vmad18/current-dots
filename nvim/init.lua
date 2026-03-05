@@ -11,12 +11,13 @@ end
 
 vim.opt.rtp:prepend(lazypath)
 
--- neovide blurring 
-vim.g.neovide_window_blurred = true
-vim.g.neovide_opacity = 0.85
-vim.g.neovide_normal_opacity = 0.85
-
 local lazy_config = require "configs.lazy"
+
+
+vim.g.neovide_window_blurred = true
+vim.g.neovide_opacity = 0.87
+vim.g.neovide_normal_opacity = 0.87
+vim.g.neovide_cursor_vfx_mode = "railgun"
 
 -- load plugins
 require("lazy").setup({
@@ -35,7 +36,7 @@ dofile(vim.g.base46_cache .. "defaults")
 dofile(vim.g.base46_cache .. "statusline")
 
 require "options"
-require "nvchad.autocmds"
+require "autocmds"
 
 vim.schedule(function()
   require "mappings"

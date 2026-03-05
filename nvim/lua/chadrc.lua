@@ -6,7 +6,7 @@
 local M = {}
 
 M.base46 = {
-	theme = "pastelbeans",
+	theme = "darcula-dark",
 
 	-- hl_override = {
 	-- 	Comment = { italic = true },
@@ -15,7 +15,7 @@ M.base46 = {
 }
 
 
-  M.nvdash = {
+M.nvdash = {
     load_on_startup = true,
 
     header = {
@@ -40,13 +40,13 @@ M.base46 = {
     --   { "  Themes", "Spc t h", "Telescope themes" },
     --   { "  Mappings", "Spc c h", "NvCheatsheet" },
     -- },
-  }
+}
 
 -- M.nvdash = { load_on_startup = true }
 -- M.ui = {
 --       tabufline = {
 --          lazyload = false
 --      }
---}
+-- }
 
 return M

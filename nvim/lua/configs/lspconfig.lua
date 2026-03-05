@@ -1,27 +1,12 @@
--- load defaults i.e lua_lsp
 require("nvchad.configs.lspconfig").defaults()
 
-local lspconfig = require "lspconfig"
-local util = require "lspconfig/util"
+local servers = { "html", "cssls", "pyright", "clangd" }
+vim.lsp.enable(servers)
 
--- EXAMPLE
-local servers = { "html", "cssls" }
-local nvlsp = require "nvchad.configs.lspconfig"
 
--- lsps with default config
-for _, lsp in ipairs(servers) do
-  lspconfig[lsp].setup {
-    on_attach = nvlsp.on_attach,
-    on_init = nvlsp.on_init,
-    capabilities = nvlsp.capabilities,
-  }
-end
-
-lspconfig.rust_analyzer.setup({
-  on_attach=nvlsp.on_attach,
-  capabilities=nvlsp.capabilities,
-  filetypes = {"rust"},
-  root_dir = util.root_pattern("Cargo.toml"),
+-- 2. SETUP CUSTOM SERVERS (Rust)
+-- The README says: "Use vim.lsp.config('…') to customize or define a config."
+vim.lsp.config('rust_analyzer', {
   settings = {
     ['rust-analyzer'] = {
       cargo = {
@@ -31,22 +16,5 @@ lspconfig.rust_analyzer.setup({
   },
 })
 
-lspconfig.pyright.setup({
-  on_attach=nvlsp.on_attach,
-  capabilities=nvlsp.capabilities,
-  filetypes = {"python"},
-})
-
-
-lspconfig.clangd.setup({
-  on_attach=nvlsp.on_attach,
-  capabilities=nvlsp.capabilities,
-  filetypes = {"cpp"},
-})
-
--- configuring single server, example: typescript
--- lspconfig.ts_ls.setup {
---   on_attach = nvlsp.on_attach,
---   on_init = nvlsp.on_init,
---   capabilities = nvlsp.capabilities,
--- }
+-- After configuring, we must explicitly enable it.
+vim.lsp.enable('rust_analyzer')
