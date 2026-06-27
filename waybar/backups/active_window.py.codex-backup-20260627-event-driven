@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+
+import json
+import subprocess
+
+
+MAX_TITLE = 34
+
+ICONS = {
+    "firefox": "󰈹",
+    "firefoxdeveloperedition": "󰈹",
+    "librewolf": "󰈹",
+    "chromium": "",
+    "google-chrome": "",
+    "kitty": "",
+    "alacritty": "",
+    "wezterm": "",
+    "codium": "󰨞",
+    "code": "󰨞",
+    "neovide": "",
+    "nvim": "",
+    "spotify": "",
+    "discord": "",
+    "vesktop": "",
+    "slack": "󰒱",
+    "steam": "",
+    "org.kicad.kicad": "󰢛",
+    "kicad": "󰢛",
+    "org.gnome.nautilus": "󰉋",
+    "thunar": "󰉋",
+    "org.pwmt.zathura": "",
+    "zathura": "",
+    "obsidian": "󱓧",
+}
+
+
+def truncate(text, limit):
+    text = " ".join(text.split())
+    if len(text) <= limit:
+        return text
+
+    return text[: limit - 1].rstrip() + "…"
+
+
+def active_window():
+    result = subprocess.run(
+        ["hyprctl", "activewindow", "-j"],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=0.5,
+    )
+    return json.loads(result.stdout)
+
+
+def icon_for(window_class):
+    lowered = window_class.lower()
+    return ICONS.get(lowered, "󰣆")
+
+
+def main():
+    try:
+        window = active_window()
+    except (subprocess.SubprocessError, json.JSONDecodeError, OSError):
+        print(json.dumps({"text": "󰣆 Desktop", "tooltip": "No active window"}), flush=True)
+        return
+
+    window_class = window.get("class") or window.get("initialClass") or "Window"
+    title = window.get("title") or window_class or "Desktop"
+    icon = icon_for(window_class)
+    text = icon
+
+    workspace = window.get("workspace", {}).get("name", "?")
+    tooltip = "\n".join(
+        [
+            title,
+            f"App: {window_class}",
+            f"Workspace: {workspace}",
+        ]
+    )
+
+    print(json.dumps({"text": text, "tooltip": tooltip}, ensure_ascii=False), flush=True)
+
+
+if __name__ == "__main__":
+    main()

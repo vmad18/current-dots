@@ -295,13 +295,6 @@ tooltip {
 
 
 
-#center_info #custom-active_window {
-  margin: 0px;
-  padding: 0px 0px 0px 10px;
-}
-
-
-
 #desktop_info {
   margin-left: 5px;
 }

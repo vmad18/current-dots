@@ -11,14 +11,14 @@
  
 
   "modules-center": [
-                      "group/center_info"
+                      "custom/clock_weather"
                     ],
   
 
   "modules-right":  [
 
                       "custom/cycle_wall", 
-                      "group/desktop_info",
+                      "hyprland/workspaces",
                       // "clock",
                       "group/hardware",
                       "tray"],
@@ -32,31 +32,6 @@
   
   "hyprland/window": {
     "max-length": 15
-  },
-
-
-  "group/center_info": {
-    "orientation": "inherit",
-    "modules": [
-      "custom/clock_weather"
-    ]
-  },
-
-
-  "group/desktop_info": {
-    "orientation": "inherit",
-    "modules": [
-      "custom/active_window",
-      "hyprland/workspaces"
-    ]
-  },
-
-
-  "custom/active_window": {
-    "exec": "python3 ~/.config/waybar/scripts/active_window.py",
-    "return-type": "json",
-    "restart-interval": 2,
-    "tooltip": true
   },
 
 

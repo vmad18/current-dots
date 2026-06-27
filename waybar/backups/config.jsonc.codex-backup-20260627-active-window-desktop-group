@@ -18,7 +18,7 @@
   "modules-right":  [
 
                       "custom/cycle_wall", 
-                      "group/desktop_info",
+                      "hyprland/workspaces",
                       // "clock",
                       "group/hardware",
                       "tray"],
@@ -38,16 +38,8 @@
   "group/center_info": {
     "orientation": "inherit",
     "modules": [
-      "custom/clock_weather"
-    ]
-  },
-
-
-  "group/desktop_info": {
-    "orientation": "inherit",
-    "modules": [
       "custom/active_window",
-      "hyprland/workspaces"
+      "custom/clock_weather"
     ]
   },
 
@@ -55,7 +47,7 @@
   "custom/active_window": {
     "exec": "python3 ~/.config/waybar/scripts/active_window.py",
     "return-type": "json",
-    "restart-interval": 2,
+    "interval": 1,
     "tooltip": true
   },
 

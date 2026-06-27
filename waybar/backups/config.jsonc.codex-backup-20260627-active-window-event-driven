@@ -55,7 +55,7 @@
   "custom/active_window": {
     "exec": "python3 ~/.config/waybar/scripts/active_window.py",
     "return-type": "json",
-    "restart-interval": 2,
+    "interval": 1,
     "tooltip": true
   },
 

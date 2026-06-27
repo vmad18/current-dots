@@ -167,8 +167,7 @@ tooltip {
 #custom-caffeine, 
 #custom-power, 
 #clock, 
-#center_info,
-#desktop_info,
+#custom-clock_weather,
 #battery, 
 #pulseaudio, 
 #network, 
@@ -259,7 +258,7 @@ tooltip {
 
 
 #clock,
-#center_info {
+#custom-clock_weather {
   /* background: transparent;  */
   background: rgba(155, 214, 255, 0.6); 
   /* background-color: rgba(155, 214, 255, 0.05); */
@@ -269,60 +268,6 @@ tooltip {
   color: @text; 
   /* bg1; */
   border-radius: 10px;
-}
-
-
-
-#custom-active_window,
-#custom-clock_weather {
-  background: transparent;
-  margin: 0px;
-  padding: 0px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
-  color: @text;
-}
-
-
-
-#custom-active_window {
-  padding-right: 0px;
-  margin-right: 0px;
-  border-right: 0px;
-}
-
-
-
-#center_info #custom-active_window {
-  margin: 0px;
-  padding: 0px 0px 0px 10px;
-}
-
-
-
-#desktop_info {
-  margin-left: 5px;
-}
-
-
-
-#desktop_info #workspaces {
-  background: transparent;
-  margin: 0px;
-  padding: 0px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
-}
-
-
-
-#desktop_info #custom-active_window {
-  margin: 0px;
-  padding: 0px 8px 0px 0px;
 }
 
 

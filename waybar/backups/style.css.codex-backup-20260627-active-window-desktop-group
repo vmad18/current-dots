@@ -168,7 +168,6 @@ tooltip {
 #custom-power, 
 #clock, 
 #center_info,
-#desktop_info,
 #battery, 
 #pulseaudio, 
 #network, 
@@ -288,41 +287,9 @@ tooltip {
 
 
 #custom-active_window {
-  padding-right: 0px;
-  margin-right: 0px;
-  border-right: 0px;
-}
-
-
-
-#center_info #custom-active_window {
-  margin: 0px;
-  padding: 0px 0px 0px 10px;
-}
-
-
-
-#desktop_info {
-  margin-left: 5px;
-}
-
-
-
-#desktop_info #workspaces {
-  background: transparent;
-  margin: 0px;
-  padding: 0px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
-}
-
-
-
-#desktop_info #custom-active_window {
-  margin: 0px;
-  padding: 0px 8px 0px 0px;
+  padding-right: 10px;
+  margin-right: 10px;
+  border-right: 1px solid rgba(255, 255, 255, 0.28);
 }
 
 

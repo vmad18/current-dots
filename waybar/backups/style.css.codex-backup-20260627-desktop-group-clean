@@ -288,16 +288,9 @@ tooltip {
 
 
 #custom-active_window {
-  padding-right: 0px;
-  margin-right: 0px;
-  border-right: 0px;
-}
-
-
-
-#center_info #custom-active_window {
-  margin: 0px;
-  padding: 0px 0px 0px 10px;
+  padding-right: 10px;
+  margin-right: 10px;
+  border-right: 1px solid rgba(255, 255, 255, 0.28);
 }
 
 
@@ -321,7 +314,7 @@ tooltip {
 
 
 #desktop_info #custom-active_window {
-  margin: 0px;
+  margin: 0px 8px 0px 0px;
   padding: 0px 8px 0px 0px;
 }
 
