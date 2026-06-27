@@ -125,7 +125,7 @@ window#waybar {
 
 
 tooltip {
-  background: rgb(24, 26, 34);
+  background: @backgroundlight;
    
   transition-property: background-color;
   transition-duration: .5s;
@@ -167,7 +167,6 @@ tooltip {
 #custom-caffeine, 
 #custom-power, 
 #clock, 
-#custom-clock_weather,
 #battery, 
 #pulseaudio, 
 #network, 
@@ -257,8 +256,7 @@ tooltip {
 
 
 
-#clock,
-#custom-clock_weather {
+#clock {
   /* background: transparent;  */
   background: rgba(155, 214, 255, 0.6); 
   /* background-color: rgba(155, 214, 255, 0.05); */
@@ -352,7 +350,7 @@ tooltip {
   padding-left: 8px;
   padding-right: 8px;
   border: 1.8px solid rgba(230, 245, 255, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), inset 0 -1px 0 rgba(20, 30, 70, 0.25), inset 0 0 8px rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), inset 0 -1px 0 rgba(20, 30, 70, 0.25), inset 0 0 8px rgba(255, 255, 255, 0.14), 0 0 8px rgba(110, 145, 255, 0.26);
   opacity: 0.92;
 }
 

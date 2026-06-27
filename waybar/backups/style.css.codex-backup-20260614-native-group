@@ -125,7 +125,7 @@ window#waybar {
 
 
 tooltip {
-  background: rgb(24, 26, 34);
+  background: @backgroundlight;
    
   transition-property: background-color;
   transition-duration: .5s;
@@ -150,24 +150,12 @@ tooltip {
 
 
 
-@keyframes audio_stream {
-  0% {
-    background-position: 0px 0px, 0px 0px;
-  }
-  100% {
-    background-position: 0px 0px, 288px 0px;
-  }
-}
-
-
-
 
 #custom-language, 
 #custom-updates, 
 #custom-caffeine, 
 #custom-power, 
 #clock, 
-#custom-clock_weather,
 #battery, 
 #pulseaudio, 
 #network, 
@@ -178,8 +166,9 @@ tooltip {
 #custom-wl-gammarelay-brightness, 
 #custom-wl-gammarelay-temperature, 
 #custom-spotify, 
-#custom-audio_viz,
-#hardware,
+#custom-cpu_memory,
+#cpu, 
+#memory,
 #taskbar,
 #custom-updates, 
 #window {
@@ -257,8 +246,7 @@ tooltip {
 
 
 
-#clock,
-#custom-clock_weather {
+#clock {
   /* background: transparent;  */
   background: rgba(155, 214, 255, 0.6); 
   /* background-color: rgba(155, 214, 255, 0.05); */
@@ -274,56 +262,21 @@ tooltip {
 
 #cpu {
   color: @text;
-  background: transparent;
-  margin: 0px;
-  padding: 0px 5px 0px 0px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
+  margin-left: 5px;
 }
 
 
 
 #memory {
   color: @text;
-  background: transparent;
-  margin: 0px;
-  padding: 0px 0px 0px 5px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
-}
-
-
-
-#hardware {
   margin-left: 5px;
 }
 
 
 
-#hardware_metrics {
-  background: transparent;
-  margin: 0px;
-  padding: 0px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
-}
-
-
-
-#hardware #custom-updates {
-  background: transparent;
-  margin: 0px;
-  padding: 0px 0px 0px 10px;
-  border: 0px;
-  border-radius: 0px;
-  box-shadow: none;
-  opacity: 1;
+#custom-cpu_memory {
+  color: @text;
+  margin-left: 5px;
 }
 
 
@@ -338,22 +291,6 @@ tooltip {
 #custom-spotify {
   color: @text;
   margin-left: 5px;
-}
-
-
-
-#custom-audio_viz {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 22%, rgba(255, 255, 255, 0.00) 48%, rgba(255, 255, 255, 0.12) 100%), repeating-linear-gradient(90deg, rgba(70, 139, 195, 0.86) 0px, rgba(70, 139, 195, 0.82) 56px, rgba(82, 119, 205, 0.84) 112px, rgba(94, 101, 210, 0.86) 160px, rgba(82, 119, 205, 0.84) 216px, rgba(70, 139, 195, 0.82) 264px, rgba(70, 139, 195, 0.86) 288px);
-  background-size: 100% 100%, 288px 100%;
-  animation: audio_stream 2.4s linear infinite;
-  color: @text;
-  margin-left: 5px;
-  min-width: 74px;
-  padding-left: 8px;
-  padding-right: 8px;
-  border: 1.8px solid rgba(230, 245, 255, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), inset 0 -1px 0 rgba(20, 30, 70, 0.25), inset 0 0 8px rgba(255, 255, 255, 0.14);
-  opacity: 0.92;
 }
 
 

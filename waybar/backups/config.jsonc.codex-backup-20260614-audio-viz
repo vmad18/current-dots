@@ -6,12 +6,11 @@
   
   "modules-left":   [ 
                       "pulseaudio",
-                      "custom/audio_viz",
                       "custom/spotify"],
  
 
   "modules-center": [
-                      "custom/clock_weather"
+                      "clock"
                     ],
   
 
@@ -41,14 +40,6 @@
     "on-click": "~/.config/sys-scripts/check_update/systemupdate.sh up",
     "interval": 86400, // once every day
     "tooltip": true
-  },
-
-
-  "custom/audio_viz": {
-    "exec": "python3 ~/.config/waybar/scripts/audio_viz.py",
-    "return-type": "json",
-    "restart-interval": 2,
-    "tooltip": false
   },
 
 
@@ -102,14 +93,6 @@
   "clock": {
     "format": " {:%I:%M %p - %b/%d}",
     "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
-  },
-
-
-  "custom/clock_weather": {
-    "exec": "python3 ~/.config/waybar/scripts/clock_weather.py",
-    "return-type": "json",
-    "interval": 60,
-    "tooltip": true
   },
 
 

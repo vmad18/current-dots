@@ -125,7 +125,7 @@ window#waybar {
 
 
 tooltip {
-  background: rgb(24, 26, 34);
+  background: @backgroundlight;
    
   transition-property: background-color;
   transition-duration: .5s;
@@ -167,7 +167,6 @@ tooltip {
 #custom-caffeine, 
 #custom-power, 
 #clock, 
-#custom-clock_weather,
 #battery, 
 #pulseaudio, 
 #network, 
@@ -257,8 +256,7 @@ tooltip {
 
 
 
-#clock,
-#custom-clock_weather {
+#clock {
   /* background: transparent;  */
   background: rgba(155, 214, 255, 0.6); 
   /* background-color: rgba(155, 214, 255, 0.05); */
