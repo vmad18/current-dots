@@ -46,3 +46,49 @@ vim.api.nvim_create_user_command("CodeTheme", function()
 end, {
   desc = "Toggle filetype-based theme switching",
 })
+
+local session_dir = vim.fn.stdpath "state" .. "/sessions/by-cwd"
+
+local function cwd_session()
+  local cwd = vim.fn.getcwd()
+  local name = cwd:gsub("[/\\:]", "%%"):gsub("[^%w%._%-%%]", "_")
+  return session_dir .. "/" .. name .. ".vim"
+end
+
+vim.opt.sessionoptions = {
+  "buffers",
+  "curdir",
+  "folds",
+  "help",
+  "localoptions",
+  "tabpages",
+  "terminal",
+  "winsize",
+}
+
+vim.api.nvim_create_autocmd("VimEnter", {
+  group = vim.api.nvim_create_augroup("last_session_restore", { clear = true }),
+  callback = function()
+    local session = cwd_session()
+    if vim.env.NVIM_NO_SESSION == "1" or vim.fn.argc(-1) > 0 or vim.fn.filereadable(session) == 0 then
+      return
+    end
+
+    vim.schedule(function()
+      vim.cmd("silent! source " .. vim.fn.fnameescape(session))
+    end)
+  end,
+})
+
+vim.api.nvim_create_autocmd("VimLeavePre", {
+  group = vim.api.nvim_create_augroup("last_session_save", { clear = true }),
+  callback = function()
+    if vim.env.NVIM_NO_SESSION == "1" or vim.fn.argc(-1) > 0 or vim.v.dying ~= 0 then
+      return
+    end
+
+    local session = cwd_session()
+    vim.fn.mkdir(vim.fn.fnamemodify(session, ":h"), "p")
+    vim.cmd("silent! mksession! " .. vim.fn.fnameescape(session))
+  end,
+})
