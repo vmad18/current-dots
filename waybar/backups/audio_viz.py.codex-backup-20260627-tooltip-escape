@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+
+import json
+import math
+import os
+import signal
+import struct
+import subprocess
+import sys
+import time
+
+
+RATE = 8000
+SAMPLES = 512
+BANDS = (80, 160, 315, 630, 1000, 1600, 2500, 3500)
+LEVELS = "▁▂▃▄▅▆▇█"
+TOOLTIP_REFRESH_SECONDS = 4.0
+MAX_STREAM_NAME = 78
+LOCK_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "waybar-audio-viz.pid")
+CAPTURE_PROC = None
+
+
+def emit(text, css_class="normal", tooltip=None):
+    payload = {"text": text, "class": css_class}
+
+    if tooltip:
+        payload["tooltip"] = tooltip
+
+    print(json.dumps(payload, ensure_ascii=False), flush=True)
+
+
+def pactl_json(*args):
+    result = subprocess.run(
+        ["pactl", "--format=json", *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=0.8,
+    )
+    return json.loads(result.stdout)
+
+
+def pactl_text(*args):
+    result = subprocess.run(
+        ["pactl", *args],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=0.8,
+    )
+    return result.stdout.strip()
+
+
+def nice_device_name(raw_name):
+    if not raw_name:
+        return "Unknown output"
+
+    try:
+        sinks = pactl_json("list", "sinks")
+    except (subprocess.SubprocessError, json.JSONDecodeError, OSError):
+        return raw_name
+
+    for sink in sinks:
+        if sink.get("name") == raw_name:
+            props = sink.get("properties", {})
+            return (
+                props.get("device.description")
+                or sink.get("description")
+                or raw_name
+            )
+
+    return raw_name
+
+
+def stream_name(stream):
+    props = stream.get("properties", {})
+    app = props.get("application.name") or props.get("application.process.binary")
+    media = props.get("media.name") or stream.get("name")
+
+    if app and media and media != app:
+        name = f"{app}: {media}"
+    else:
+        name = app or media or f"Stream {stream.get('index', '?')}"
+
+    if len(name) > MAX_STREAM_NAME:
+        return name[: MAX_STREAM_NAME - 1].rstrip() + "…"
+
+    return name
+
+
+def audio_tooltip():
+    lines = []
+
+    try:
+        default_sink = pactl_text("get-default-sink")
+        lines.append(f"Output: {nice_device_name(default_sink)}")
+    except (subprocess.SubprocessError, OSError):
+        lines.append("Output: unavailable")
+
+    try:
+        streams = pactl_json("list", "sink-inputs")
+    except (subprocess.SubprocessError, json.JSONDecodeError, OSError):
+        streams = []
+
+    lines.append("")
+    lines.append("Audio streams:")
+
+    if not streams:
+        lines.append("none")
+    else:
+        for stream in streams[:8]:
+            muted = stream.get("mute") is True
+            marker = " muted" if muted else ""
+            lines.append(f"• {stream_name(stream)}{marker}")
+
+        if len(streams) > 8:
+            lines.append(f"• +{len(streams) - 8} more")
+
+    return "\n".join(lines)
+
+
+class TooltipCache:
+    def __init__(self):
+        self.next_refresh = 0.0
+        self.text = "Audio streams loading..."
+
+    def get(self):
+        now = time.monotonic()
+
+        if now >= self.next_refresh:
+            self.text = audio_tooltip()
+            self.next_refresh = now + TOOLTIP_REFRESH_SECONDS
+
+        return self.text
+
+
+def start_capture():
+    global CAPTURE_PROC
+
+    CAPTURE_PROC = subprocess.Popen(
+        [
+            "parec",
+            "-d",
+            "@DEFAULT_MONITOR@",
+            "--format=s16le",
+            "--channels=1",
+            "--rate",
+            str(RATE),
+            "--latency-msec=50",
+            "--process-time-msec=50",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    return CAPTURE_PROC
+
+
+def claim_instance():
+    try:
+        with open(LOCK_PATH, "r", encoding="utf-8") as lock_file:
+            old_pid = int(lock_file.read().strip())
+    except (FileNotFoundError, ValueError, OSError):
+        old_pid = None
+
+    if old_pid and old_pid != os.getpid():
+        try:
+            with open(f"/proc/{old_pid}/cmdline", "rb") as cmdline_file:
+                cmdline = cmdline_file.read()
+            if b"audio_viz.py" in cmdline:
+                os.kill(old_pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+    with open(LOCK_PATH, "w", encoding="utf-8") as lock_file:
+        lock_file.write(f"{os.getpid()}\n")
+
+
+def cleanup(_signum=None, _frame=None):
+    if CAPTURE_PROC and CAPTURE_PROC.poll() is None:
+        CAPTURE_PROC.terminate()
+
+    try:
+        with open(LOCK_PATH, "r", encoding="utf-8") as lock_file:
+            locked_pid = int(lock_file.read().strip())
+        if locked_pid == os.getpid():
+            os.unlink(LOCK_PATH)
+    except (FileNotFoundError, ValueError, OSError):
+        pass
+
+    raise SystemExit(0)
+
+
+def goertzel(samples, freq):
+    coeff = 2.0 * math.cos(2.0 * math.pi * freq / RATE)
+    q0 = q1 = q2 = 0.0
+
+    for sample in samples:
+        q0 = coeff * q1 - q2 + sample
+        q2 = q1
+        q1 = q0
+
+    power = q1 * q1 + q2 * q2 - coeff * q1 * q2
+    return math.sqrt(max(power, 0.0)) / len(samples)
+
+
+def render(values, peak):
+    chars = []
+
+    for value in values:
+        normalized = min(value / peak, 1.0) if peak > 0 else 0.0
+        index = min(int(normalized * len(LEVELS)), len(LEVELS) - 1)
+        chars.append(LEVELS[index])
+
+    return "".join(chars)
+
+
+def main():
+    claim_instance()
+    signal.signal(signal.SIGTERM, cleanup)
+    signal.signal(signal.SIGINT, cleanup)
+
+    proc = start_capture()
+    peak = 500.0
+    smoothed = [0.0] * len(BANDS)
+    silence_until = 0.0
+    tooltips = TooltipCache()
+
+    while True:
+        if proc.stdout is None:
+            emit("▁▁▁▁▁▁▁▁", "muted", tooltips.get())
+            return 1
+
+        data = proc.stdout.read(SAMPLES * 2)
+        if len(data) < SAMPLES * 2:
+            emit("▁▁▁▁▁▁▁▁", "muted", tooltips.get())
+            return 1
+
+        samples = struct.unpack("<" + "h" * SAMPLES, data)
+        windowed = [
+            sample * (0.5 - 0.5 * math.cos(2.0 * math.pi * i / (SAMPLES - 1)))
+            for i, sample in enumerate(samples)
+        ]
+
+        values = [goertzel(windowed, freq) for freq in BANDS]
+        peak = max(max(values), peak * 0.965, 50.0)
+        smoothed = [
+            old * 0.58 + new * 0.42
+            for old, new in zip(smoothed, values)
+        ]
+
+        if max(smoothed) < 22.0:
+            now = time.monotonic()
+            if now >= silence_until:
+                emit("▁▁▁▁▁▁▁▁", "quiet", tooltips.get())
+                silence_until = now + 0.35
+            continue
+
+        emit(render(smoothed, peak), tooltip=tooltips.get())
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(0)
+    except BrokenPipeError:
+        raise SystemExit(0)
+    except Exception as exc:
+        emit("audio?", "error", "Audio visualizer error")
+        print(exc, file=sys.stderr)
+        raise SystemExit(1)

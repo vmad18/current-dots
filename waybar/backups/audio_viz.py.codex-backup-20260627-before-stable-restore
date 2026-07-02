@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+
+import json
+import math
+import os
+import select
+import signal
+import struct
+import subprocess
+import sys
+import time
+
+
+RATE = 8000
+SAMPLES = 512
+BANDS = (80, 160, 315, 630, 1000, 1600, 2500, 3500)
+LEVELS = "▁▂▃▄▅▆▇█"
+READ_TIMEOUT_SECONDS = 0.35
+MAX_STALLED_READS = 6
+LOCK_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "waybar-audio-viz.pid")
+CAPTURE_PROC = None
+
+
+def emit(text, css_class="normal"):
+    print(json.dumps({"text": text, "class": css_class}, ensure_ascii=False), flush=True)
+
+
+def start_capture():
+    global CAPTURE_PROC
+
+    CAPTURE_PROC = subprocess.Popen(
+        [
+            "parec",
+            "-d",
+            "@DEFAULT_MONITOR@",
+            "--format=s16le",
+            "--channels=1",
+            "--rate",
+            str(RATE),
+            "--latency-msec=50",
+            "--process-time-msec=50",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    return CAPTURE_PROC
+
+
+def stop_capture(proc):
+    if proc and proc.poll() is None:
+        proc.terminate()
+
+        try:
+            proc.wait(timeout=0.5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
+def restart_capture(proc):
+    stop_capture(proc)
+    return start_capture()
+
+
+def read_audio(proc, size):
+    if proc.stdout is None:
+        return b""
+
+    chunks = []
+    remaining = size
+    deadline = time.monotonic() + READ_TIMEOUT_SECONDS
+    fd = proc.stdout.fileno()
+
+    while remaining > 0:
+        timeout = deadline - time.monotonic()
+
+        if timeout <= 0:
+            return None
+
+        ready, _, _ = select.select([fd], [], [], timeout)
+
+        if not ready:
+            return None
+
+        chunk = os.read(fd, remaining)
+
+        if not chunk:
+            return b""
+
+        chunks.append(chunk)
+        remaining -= len(chunk)
+
+    return b"".join(chunks)
+
+
+def claim_instance():
+    try:
+        with open(LOCK_PATH, "r", encoding="utf-8") as lock_file:
+            old_pid = int(lock_file.read().strip())
+    except (FileNotFoundError, ValueError, OSError):
+        old_pid = None
+
+    if old_pid and old_pid != os.getpid():
+        try:
+            with open(f"/proc/{old_pid}/cmdline", "rb") as cmdline_file:
+                cmdline = cmdline_file.read()
+            if b"audio_viz.py" in cmdline:
+                os.kill(old_pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+    with open(LOCK_PATH, "w", encoding="utf-8") as lock_file:
+        lock_file.write(f"{os.getpid()}\n")
+
+
+def cleanup(_signum=None, _frame=None):
+    stop_capture(CAPTURE_PROC)
+
+    try:
+        with open(LOCK_PATH, "r", encoding="utf-8") as lock_file:
+            locked_pid = int(lock_file.read().strip())
+        if locked_pid == os.getpid():
+            os.unlink(LOCK_PATH)
+    except (FileNotFoundError, ValueError, OSError):
+        pass
+
+    raise SystemExit(0)
+
+
+def goertzel(samples, freq):
+    coeff = 2.0 * math.cos(2.0 * math.pi * freq / RATE)
+    q0 = q1 = q2 = 0.0
+
+    for sample in samples:
+        q0 = coeff * q1 - q2 + sample
+        q2 = q1
+        q1 = q0
+
+    power = q1 * q1 + q2 * q2 - coeff * q1 * q2
+    return math.sqrt(max(power, 0.0)) / len(samples)
+
+
+def render(values, peak):
+    chars = []
+
+    for value in values:
+        normalized = min(value / peak, 1.0) if peak > 0 else 0.0
+        index = min(int(normalized * len(LEVELS)), len(LEVELS) - 1)
+        chars.append(LEVELS[index])
+
+    return "".join(chars)
+
+
+def main():
+    claim_instance()
+    signal.signal(signal.SIGTERM, cleanup)
+    signal.signal(signal.SIGINT, cleanup)
+
+    proc = start_capture()
+    peak = 500.0
+    smoothed = [0.0] * len(BANDS)
+    silence_until = 0.0
+    stalled_reads = 0
+
+    while True:
+        data = read_audio(proc, SAMPLES * 2)
+
+        if data is None:
+            stalled_reads += 1
+            now = time.monotonic()
+
+            if now >= silence_until:
+                emit("▁▁▁▁▁▁▁▁", "quiet")
+                silence_until = now + 0.35
+
+            if stalled_reads >= MAX_STALLED_READS:
+                proc = restart_capture(proc)
+                stalled_reads = 0
+
+            continue
+
+        stalled_reads = 0
+
+        if len(data) < SAMPLES * 2:
+            emit("▁▁▁▁▁▁▁▁", "muted")
+            proc = restart_capture(proc)
+            continue
+
+        samples = struct.unpack("<" + "h" * SAMPLES, data)
+        windowed = [
+            sample * (0.5 - 0.5 * math.cos(2.0 * math.pi * i / (SAMPLES - 1)))
+            for i, sample in enumerate(samples)
+        ]
+
+        values = [goertzel(windowed, freq) for freq in BANDS]
+        peak = max(max(values), peak * 0.965, 50.0)
+        smoothed = [
+            old * 0.58 + new * 0.42
+            for old, new in zip(smoothed, values)
+        ]
+
+        if max(smoothed) < 22.0:
+            now = time.monotonic()
+            if now >= silence_until:
+                emit("▁▁▁▁▁▁▁▁", "quiet")
+                silence_until = now + 0.35
+            continue
+
+        emit(render(smoothed, peak))
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except KeyboardInterrupt:
+        raise SystemExit(0)
+    except BrokenPipeError:
+        raise SystemExit(0)
+    except Exception as exc:
+        emit("audio?", "error")
+        print(exc, file=sys.stderr)
+        raise SystemExit(1)

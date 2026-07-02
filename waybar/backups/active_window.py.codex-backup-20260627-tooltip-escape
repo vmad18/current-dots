@@ -2,16 +2,13 @@
 
 import json
 import os
-import signal
 import socket
 import subprocess
 import time
-from html import escape
 
 
 MAX_TITLE = 34
 LAST_KEY = None
-LOCK_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "waybar-active-window.pid")
 
 ICONS = {
     "firefox": "󰈹",
@@ -19,12 +16,9 @@ ICONS = {
     "librewolf": "󰈹",
     "chromium": "",
     "google-chrome": "",
-    "kitty": "",
-    "alacritty": "",
-    "wezterm": "",
-    "foot": "",
-    "ghostty": "",
-    "org.gnome.terminal": "",
+    "kitty": "",
+    "alacritty": "",
+    "wezterm": "",
     "codium": "󰨞",
     "code": "󰨞",
     "neovide": "",
@@ -69,29 +63,8 @@ def icon_for(window_class):
 
 
 def main():
-    claim_instance()
     emit_active_window(force=True)
     watch_hyprland_events()
-
-
-def claim_instance():
-    try:
-        with open(LOCK_PATH, "r", encoding="utf-8") as lock_file:
-            old_pid = int(lock_file.read().strip())
-    except (FileNotFoundError, ValueError, OSError):
-        old_pid = None
-
-    if old_pid and old_pid != os.getpid():
-        try:
-            with open(f"/proc/{old_pid}/cmdline", "rb") as cmdline_file:
-                cmdline = cmdline_file.read()
-            if b"active_window.py" in cmdline:
-                os.kill(old_pid, signal.SIGTERM)
-        except OSError:
-            pass
-
-    with open(LOCK_PATH, "w", encoding="utf-8") as lock_file:
-        lock_file.write(f"{os.getpid()}\n")
 
 
 def emit_active_window(force=False):
@@ -121,9 +94,9 @@ def emit_active_window(force=False):
 
     tooltip = "\n".join(
         [
-            escape(title, quote=False),
-            f"App: {escape(window_class, quote=False)}",
-            f"Workspace: {escape(str(workspace), quote=False)}",
+            title,
+            f"App: {window_class}",
+            f"Workspace: {workspace}",
         ]
     )
 

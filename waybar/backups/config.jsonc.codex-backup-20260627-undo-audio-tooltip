@@ -1,0 +1,255 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 34,
+  "mod": "dock",
+  
+  "modules-left":   [ 
+                      "pulseaudio",
+                      "custom/audio_viz",
+                      "custom/spotify"],
+ 
+
+  "modules-center": [
+                      "group/center_info"
+                    ],
+  
+
+  "modules-right":  [
+
+                      "custom/cycle_wall", 
+                      "group/desktop_info",
+                      // "clock",
+                      "group/hardware",
+                      "tray"],
+
+
+  "hyprland/workspaces": {
+    "disable-scroll": true,
+    "on-click": "activate"
+
+  },
+  
+  "hyprland/window": {
+    "max-length": 15
+  },
+
+
+  "group/center_info": {
+    "orientation": "inherit",
+    "modules": [
+      "custom/clock_weather"
+    ]
+  },
+
+
+  "group/desktop_info": {
+    "orientation": "inherit",
+    "modules": [
+      "custom/active_window",
+      "hyprland/workspaces"
+    ]
+  },
+
+
+  "custom/active_window": {
+    "exec": "python3 ~/.config/waybar/scripts/active_window.py",
+    "return-type": "json",
+    "restart-interval": 2,
+    "tooltip": true
+  },
+
+
+  "custom/updates": {
+    "format": "󰮯 {}",
+    "exec": "~/.config/sys-scripts/check_update/systemupdate.sh",
+    "on-click": "~/.config/sys-scripts/check_update/systemupdate.sh up",
+    "interval": 86400, // once every day
+    "tooltip": true
+  },
+
+
+  "custom/audio_viz": {
+    "exec": "python3 ~/.config/waybar/scripts/audio_viz.py",
+    "return-type": "json",
+    "restart-interval": 2,
+    "tooltip": true
+  },
+
+
+  "wlr/taskbar": {
+		"format": "{icon}",
+		"icon-size": 14,
+		"icon-theme": "${i_theme}",
+        "spacing": 0,
+		"tooltip-format": "{title}",
+		"on-click": "activate",
+		"on-click-middle": "close",
+		"ignore-list": [
+			"Alacritty"
+		],
+		"app_ids-mapping": {
+			"firefoxdeveloperedition": "firefox-developer-edition"
+		}
+	},
+
+
+  "tray": {
+    "icon-size": 14,
+    "spacing": 10
+  },
+
+
+  "backlight":{
+    "device": "intel_backlight",
+    "format": "{icon} {percent}%",
+    "format-icons": ["","",""],
+    "on-scroll-up": "brightnessctl set 1%+",
+    "on-scroll-down": "brightnessctl set 1%-",
+    "min-length": 6 
+  },
+
+
+  "battery": {
+    "states": {
+      "good": 95,
+      "warning": 30,
+      "critical": 20
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": " {capacity}%",
+    "format-plugged": " {capacity}%",
+    "format-alt": "{time} {icon}",
+    "format-icons": ["", "", "", "", "", "", "", "", "", "", ""]
+  },
+
+
+  "clock": {
+    "format": " {:%I:%M %p - %b/%d}",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+  },
+
+
+  "custom/clock_weather": {
+    "exec": "python3 ~/.config/waybar/scripts/clock_weather.py",
+    "return-type": "json",
+    "interval": 60,
+    "tooltip": true
+  },
+
+
+  "cpu": {
+    "format": "  {usage}%",
+    "on-click-right": "kitty -e vtop",
+    "tooltip": true
+  },
+
+
+  "memory": {
+    "interval": 30,
+    "format": "󰾆 {percentage}%",
+    "format-alt": "󰾅 {used}GB",
+    "max-length": 10,
+    "on-click-right": "kitty -e vtop",
+    "tooltip": true,
+    "tooltip-format": " {used:0.1f}GB/{total:0.1f}GB"
+  },
+
+
+  "network": {
+    "format": "{ifname}",
+    "format-wifi": "  {signalStrength}%",
+    "format-disconnected": "Disconnected ⚠", //An empty format will hide the module.
+    "tooltip-format-wifi": "{essid} ({signalStrength}%)  ",
+    "tooltip-format-disconnected": "Disconnected",
+    "interval": 800,
+    "on-click-middle": "sh ~/.toggle_wifi.sh on",
+    "on-click-right": "sh ~/.toggle_wifi.sh off",
+    "max-length": 90
+  },
+
+
+  "pulseaudio": {
+    "scroll-step": 5,
+    "format": "{volume}% {icon} {format_source}",
+    "format-bluetooth": "{volume}% {icon}  {format_source}",
+    "format-bluetooth-muted": " {icon}  {format_source}",
+    "format-muted": " {format_source}",
+    "format-source": "{volume}% ",
+    "format-source-muted": " ",
+    "format-icons": {
+      "headphone": " ",
+      "hands-free": "",
+      "headset": "",
+      "phone": "",
+      "portable": "",
+      "car": "",
+      "default": [" ", " ", " "]
+    },
+    "on-click": "pamixer --default-source -t",
+    "on-scroll-up": "pamixer -i 5 ",
+    "on-scroll-down": "pamixer -d 5",
+    "on-click-middle": "pamixer --default-source -d 5",
+    "on-click-right": "pamixer --default-source -i 5",
+    "max-volume": 100
+  },
+
+
+  "custom/wl-gammarelay-temperature": {
+    "format": "{} ",
+    "exec": "wl-gammarelay-rs watch {t}",
+    "on-scroll-up": "~/.config/hypr/scripts/brightness.sh temperature-up 100",
+    "on-scroll-down": "~/.config/hypr/scripts/brightness.sh temperature-down 100"
+  },
+ 
+
+  "group/hardware": {
+    "orientation": "inherit",
+    "drawer": {
+      "transition-duration": 500,
+      "children-class": "not-power",
+      "transition-left-to-right": true
+    },
+    "modules": [
+      "group/hardware_metrics",
+      "custom/updates"
+    ]
+  },
+
+
+  "group/hardware_metrics": {
+    "orientation": "inherit",
+    "modules": [
+      "cpu",
+      "memory"
+    ]
+  },
+
+
+  "custom/wl-gammarelay-brightness": {
+    "format": "{} ",
+    "exec": "wl-gammarelay-rs watch {bp}",
+    "on-scroll-up": "~/.config/hypr/scripts/brightness.sh brightness-up 0.05",
+    "on-scroll-down": "~/.config/hypr/scripts/brightness.sh brightness-down 0.05"
+  },
+
+
+  // /usr/bin/python3 ~/.config/waybar/scripts/mediaplayer.py --player spotify
+  "custom/spotify": {
+    "exec": "sh ~/.config/sys-scripts/spotify/scroll_status.sh",
+    "format": " | {}",
+    "tooltip": false,
+    "on-click": "playerctl play-pause --player=spotify",
+    "on-scroll-up": "playerctl next --player=spotify",
+    "on-scroll-down": "playerctl previous --player=spotify"
+  },
+
+
+
+  "custom/cycle_wall":{
+    "format": "󰣇 ",
+    // "interval": 1,
+    "on-click": "python3 ~/.config/sys-scripts/background/background_only.py",
+    "tooltip": false
+  }
+}
