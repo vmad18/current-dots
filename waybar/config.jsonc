@@ -140,7 +140,7 @@
 
   "cpu": {
     "format": "  {usage}%",
-    "on-click-right": "kitty -e vtop",
+    "on-click-right": "kitty -e htop",
     "tooltip": true
   },
 
@@ -150,9 +150,29 @@
     "format": "󰾆 {percentage}%",
     "format-alt": "󰾅 {used}GB",
     "max-length": 10,
-    "on-click-right": "kitty -e vtop",
+    "on-click-right": "kitty -e htop",
     "tooltip": true,
     "tooltip-format": " {used:0.1f}GB/{total:0.1f}GB"
+  },
+
+
+  "custom/cpu_memory": {
+    "exec": "sh ~/.config/waybar/scripts/cpu_memory.sh",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "sh ~/.config/waybar/scripts/cpu_memory.sh toggle",
+    "on-click-right": "kitty -e htop"
+  },
+
+
+  "custom/gpu_memory": {
+    "exec": "sh ~/.config/waybar/scripts/cpu_memory.sh gpu",
+    "return-type": "json",
+    "interval": 2,
+    "tooltip": true,
+    "on-click": "sh ~/.config/waybar/scripts/cpu_memory.sh toggle",
+    "on-click-right": "kitty -e watch -n 1 nvidia-smi"
   },
 
 
@@ -212,6 +232,7 @@
     },
     "modules": [
       "group/hardware_metrics",
+      "custom/gpu_memory",
       "custom/updates"
     ]
   },
@@ -220,8 +241,7 @@
   "group/hardware_metrics": {
     "orientation": "inherit",
     "modules": [
-      "cpu",
-      "memory"
+      "custom/cpu_memory"
     ]
   },
 
@@ -249,7 +269,7 @@
   "custom/cycle_wall":{
     "format": "󰣇 ",
     // "interval": 1,
-    "on-click": "python3 ~/.config/sys-scripts/background/background_only.py",
+    "on-click": "python3 ~/.config/sys-scripts/background/background.py",
     "tooltip": false
   }
 }

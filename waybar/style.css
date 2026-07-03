@@ -364,7 +364,22 @@ tooltip {
 
 
 
+#hardware_metrics #custom-cpu_memory {
+  color: @text;
+  background: transparent;
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+  border-radius: 0px;
+  box-shadow: none;
+  opacity: 1;
+}
+
+
+
+#hardware #custom-gpu_memory,
 #hardware #custom-updates {
+  color: @text;
   background: transparent;
   margin: 0px;
   padding: 0px 0px 0px 10px;
