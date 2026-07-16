@@ -1,16 +1,8 @@
 #!/bin/sh
 
-state_dir=${XDG_RUNTIME_DIR:-}
+state_file="${XDG_RUNTIME_DIR:-/tmp}/waybar-cpu-memory-mode"
 
-if [ -z "$state_dir" ] || [ ! -d "$state_dir" ] || [ ! -w "$state_dir" ]; then
-  state_dir="${XDG_CACHE_HOME:-$HOME/.cache}"
-  mkdir -p "$state_dir" 2>/dev/null || state_dir="/tmp"
-fi
-
-state_file="$state_dir/waybar-cpu-memory-mode"
-request=$1
-
-if [ "$request" = "toggle" ]; then
+if [ "$1" = "toggle" ]; then
   current="percent"
   if [ -r "$state_file" ]; then
     current=$(cat "$state_file")
@@ -98,65 +90,5 @@ else
   mem_text="${mem_pct}%"
 fi
 
-gpu_text="󰢮 --"
-gpu_tip="GPU: unavailable"
-class="no-gpu"
-
-if command -v nvidia-smi >/dev/null 2>&1; then
-  gpu_stats=$(
-    nvidia-smi --query-gpu=utilization.gpu,memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null |
-      awk -F, '
-        function trim(value) {
-          gsub(/^[ \t]+|[ \t]+$/, "", value)
-          return value
-        }
-
-        NF >= 3 {
-          util = trim($1) + 0
-          used = trim($2) + 0
-          total = trim($3) + 0
-
-          count++
-          used_sum += used
-          total_sum += total
-
-          if (util > util_max) {
-            util_max = util
-          }
-        }
-
-        END {
-          if (count > 0 && total_sum > 0) {
-            vram_pct = int((used_sum * 100 + total_sum / 2) / total_sum)
-            printf "%d %.1f %.1f %d\n", util_max, used_sum / 1024, total_sum / 1024, vram_pct
-          }
-        }
-      '
-  )
-
-  if [ -n "$gpu_stats" ]; then
-    set -- $gpu_stats
-    gpu_pct=$1
-    vram_used=$2
-    vram_total=$3
-    vram_pct=$4
-
-    if [ "$mode" = "gb" ]; then
-      vram_text="${vram_used}G"
-    else
-      vram_text="${vram_pct}%"
-    fi
-
-    gpu_text="󰢮 ${gpu_pct}%  ${vram_text}"
-    gpu_tip="GPU: ${gpu_pct}%\\nVRAM: ${vram_used}/${vram_total} GiB (${vram_pct}%)"
-    class="normal"
-  fi
-fi
-
-if [ "$request" = "gpu" ]; then
-  printf '{"text":"%s","tooltip":"%s","class":"%s"}\n' \
-    "$gpu_text" "$gpu_tip" "$class"
-else
-  printf '{"text":" %s%% 󰾆 %s","tooltip":"CPU: %s%%\\nRAM: %s/%s GiB\\nSwap: %s/%s GiB (%s%%)","class":"normal"}\n' \
-    "$cpu_pct" "$mem_text" "$cpu_pct" "$mem_used" "$mem_total" "$swap_used" "$swap_total" "$swap_pct"
-fi
+printf '{"text":" %s%% 󰾆 %s","tooltip":"CPU: %s%%\\nRAM: %s/%s GiB\\nSwap: %s/%s GiB (%s%%)","class":"normal"}\n' \
+  "$cpu_pct" "$mem_text" "$cpu_pct" "$mem_used" "$mem_total" "$swap_used" "$swap_total" "$swap_pct"

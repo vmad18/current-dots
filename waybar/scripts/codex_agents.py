@@ -1,0 +1,986 @@
+#!/usr/bin/env python3
+
+from __future__ import annotations
+
+import fcntl
+import json
+import os
+import re
+import socket
+import subprocess
+import sys
+import threading
+import time
+from contextlib import contextmanager
+from html import escape
+from pathlib import Path
+
+
+ICON = ""
+SPINNER_CHARS = frozenset("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏")
+STATE_REFRESH = 0.22
+PROCESS_REFRESH = 2.0
+CLIENT_REFRESH = 2.0
+CLIENT_EVENT_THROTTLE = 0.30
+
+RUNTIME_ROOT = Path(
+    os.environ.get(
+        "WAYBAR_CODEX_RUNTIME_DIR",
+        os.path.join(
+            os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"),
+            "waybar-codex-agents",
+        ),
+    )
+)
+SESSIONS_DIR = RUNTIME_ROOT / "sessions"
+SNAPSHOT_PATH = RUNTIME_ROOT / "snapshot.json"
+SEEN_PATH = RUNTIME_ROOT / "seen.json"
+FALLBACK_PATH = RUNTIME_ROOT / "fallback.json"
+STATE_LOCK_PATH = RUNTIME_ROOT / "state.lock"
+
+COLOR_TEXT = "#cdd6f4"
+COLOR_MUTED = "#7f849c"
+COLOR_SUBTLE = "#555b70"
+COLOR_ACCENT = "#9BD6FF"
+COLOR_DONE = "#a9dcff"
+COLOR_APPROVAL = "#f2c879"
+
+
+def ensure_runtime() -> None:
+    RUNTIME_ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
+    SESSIONS_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        os.chmod(RUNTIME_ROOT, 0o700)
+        os.chmod(SESSIONS_DIR, 0o700)
+    except OSError:
+        pass
+
+
+@contextmanager
+def state_lock():
+    ensure_runtime()
+    with STATE_LOCK_PATH.open("a+", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def load_json(path: Path, default):
+    try:
+        with path.open("r", encoding="utf-8") as source:
+            return json.load(source)
+    except (FileNotFoundError, json.JSONDecodeError, OSError, TypeError):
+        return default
+
+
+def atomic_write_json(path: Path, value) -> None:
+    ensure_runtime()
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.{time.time_ns()}")
+    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    descriptor = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as target:
+            target.write(encoded)
+            target.write("\n")
+        os.replace(temporary, path)
+    finally:
+        try:
+            temporary.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def canonical_json(value) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+
+def proc_stat(pid: int) -> tuple[int, int] | None:
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8")
+        fields = raw[raw.rfind(")") + 2 :].split()
+        return int(fields[1]), int(fields[19])
+    except (FileNotFoundError, PermissionError, OSError, ValueError, IndexError):
+        return None
+
+
+def proc_comm(pid: int) -> str:
+    try:
+        return Path(f"/proc/{pid}/comm").read_text(encoding="utf-8").strip()
+    except (FileNotFoundError, PermissionError, OSError):
+        return ""
+
+
+def proc_cwd(pid: int) -> str:
+    try:
+        return os.readlink(f"/proc/{pid}/cwd")
+    except OSError:
+        return ""
+
+
+def walk_ancestors(pid: int, limit: int = 24) -> list[int]:
+    ancestors = []
+    seen = set()
+    current = pid
+
+    for _ in range(limit):
+        if current <= 1 or current in seen:
+            break
+        ancestors.append(current)
+        seen.add(current)
+        stat = proc_stat(current)
+        if not stat:
+            break
+        current = stat[0]
+
+    return ancestors
+
+
+def find_codex_ancestor(pid: int) -> tuple[int, int] | None:
+    for ancestor in walk_ancestors(pid):
+        if proc_comm(ancestor) != "codex":
+            continue
+        stat = proc_stat(ancestor)
+        if stat:
+            return ancestor, stat[1]
+    return None
+
+
+def discover_codex_processes() -> dict[int, dict]:
+    processes = {}
+
+    try:
+        entries = list(Path("/proc").iterdir())
+    except OSError:
+        return processes
+
+    for entry in entries:
+        if not entry.name.isdigit():
+            continue
+        pid = int(entry.name)
+        if proc_comm(pid) != "codex":
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+        except OSError:
+            continue
+        stat = proc_stat(pid)
+        if not stat:
+            continue
+        processes[pid] = {
+            "pid": pid,
+            "ppid": stat[0],
+            "start_ticks": stat[1],
+            "cwd": proc_cwd(pid),
+        }
+
+    return processes
+
+
+def safe_key(value: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-.")
+    return cleaned[:96] or "session"
+
+
+def hook_main() -> int:
+    try:
+        payload = json.load(sys.stdin)
+        event = str(payload.get("hook_event_name") or "")
+        session_id = str(payload.get("session_id") or "unknown")
+        turn_id = str(payload.get("turn_id") or "")
+        now = time.time()
+        ancestor = find_codex_ancestor(os.getpid())
+
+        if not ancestor or not event:
+            print("{}")
+            return 0
+
+        codex_pid, start_ticks = ancestor
+        record_key = f"{safe_key(session_id)}-{codex_pid}-{start_ticks}"
+        record_path = SESSIONS_DIR / f"{record_key}.json"
+
+        with state_lock():
+            record = load_json(record_path, {})
+            if not isinstance(record, dict):
+                record = {}
+
+            record.update(
+                {
+                    "version": 1,
+                    "record_key": record_key,
+                    "session_id": session_id,
+                    "pid": codex_pid,
+                    "start_ticks": start_ticks,
+                    "cwd": str(payload.get("cwd") or record.get("cwd") or proc_cwd(codex_pid)),
+                    "model": str(payload.get("model") or record.get("model") or ""),
+                    "last_event": event,
+                    "updated_at": now,
+                }
+            )
+            record.setdefault("subagents", {})
+
+            if event == "SessionStart":
+                record.update(
+                    {
+                        "state": "idle",
+                        "state_since": now,
+                        "turn_id": "",
+                        "started_at": None,
+                        "finished_at": None,
+                        "completion_key": "",
+                        "attention_at": None,
+                        "attention_key": "",
+                        "subagents": {},
+                    }
+                )
+            elif event == "UserPromptSubmit":
+                record.update(
+                    {
+                        "state": "working",
+                        "state_since": now,
+                        "turn_id": turn_id,
+                        "started_at": now,
+                        "finished_at": None,
+                        "completion_key": "",
+                        "attention_at": None,
+                        "attention_key": "",
+                    }
+                )
+            elif event == "PermissionRequest":
+                active_turn = turn_id or str(record.get("turn_id") or "unknown")
+                record.update(
+                    {
+                        "state": "approval",
+                        "state_since": now,
+                        "turn_id": active_turn,
+                        "attention_at": now,
+                        "attention_key": f"{record_key}:approval:{active_turn}",
+                        "approval_tool": str(payload.get("tool_name") or ""),
+                    }
+                )
+            elif event == "Stop":
+                active_turn = turn_id or str(record.get("turn_id") or f"at-{time.time_ns()}")
+                record.update(
+                    {
+                        "state": "done",
+                        "state_since": now,
+                        "turn_id": active_turn,
+                        "finished_at": now,
+                        "completion_key": f"{record_key}:turn:{active_turn}",
+                        "attention_at": None,
+                        "attention_key": "",
+                    }
+                )
+            elif event == "SubagentStart":
+                agent_id = str(payload.get("agent_id") or "")
+                if agent_id:
+                    record["subagents"][agent_id] = {
+                        "agent_type": str(payload.get("agent_type") or "agent"),
+                        "started_at": now,
+                    }
+            elif event == "SubagentStop":
+                agent_id = str(payload.get("agent_id") or "")
+                if agent_id:
+                    record["subagents"].pop(agent_id, None)
+
+            atomic_write_json(record_path, record)
+    except Exception as error:  # Hooks must never interfere with the Codex turn.
+        print(f"waybar Codex hook: {error}", file=sys.stderr)
+
+    print("{}")
+    return 0
+
+
+def hypr_socket_path(name: str) -> Path | None:
+    instance = os.environ.get("HYPRLAND_INSTANCE_SIGNATURE")
+    if not instance:
+        return None
+
+    candidates = []
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime_dir:
+        candidates.append(Path(runtime_dir) / "hypr" / instance / name)
+    candidates.append(Path("/tmp") / "hypr" / instance / name)
+
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return candidates[0] if candidates else None
+
+
+def hypr_request(command: str, timeout: float = 0.6) -> str:
+    socket_path = hypr_socket_path(".socket.sock")
+    if not socket_path:
+        raise OSError("Hyprland command socket is unavailable")
+
+    chunks = []
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(timeout)
+        client.connect(str(socket_path))
+        client.sendall(command.encode("utf-8"))
+        client.shutdown(socket.SHUT_WR)
+        while True:
+            chunk = client.recv(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    return b"".join(chunks).decode("utf-8", errors="replace")
+
+
+def fetch_clients() -> list[dict]:
+    try:
+        response = hypr_request("j/clients")
+        clients = json.loads(response)
+        return clients if isinstance(clients, list) else []
+    except (OSError, json.JSONDecodeError, socket.timeout):
+        try:
+            result = subprocess.run(
+                ["hyprctl", "clients", "-j"],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=0.8,
+            )
+            clients = json.loads(result.stdout)
+            return clients if isinstance(clients, list) else []
+        except (OSError, subprocess.SubprocessError, json.JSONDecodeError):
+            return []
+
+
+def dispatch(dispatcher: str, argument: str) -> bool:
+    try:
+        response = hypr_request(f"dispatch {dispatcher} {argument}")
+        if response.strip().lower().startswith("ok"):
+            return True
+    except (OSError, socket.timeout):
+        pass
+
+    try:
+        result = subprocess.run(
+            ["hyprctl", "dispatch", dispatcher, argument],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=0.8,
+        )
+        return result.returncode == 0 and "ok" in result.stdout.lower()
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+class HyprlandEvents:
+    def __init__(self) -> None:
+        self.dirty = threading.Event()
+        self.thread = threading.Thread(target=self._watch, daemon=True)
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def _watch(self) -> None:
+        relevant = (
+            "activewindow>>",
+            "activewindowv2>>",
+            "workspace>>",
+            "workspacev2>>",
+            "movewindow>>",
+            "movewindowv2>>",
+            "openwindow>>",
+            "closewindow>>",
+            "windowtitle>>",
+            "windowtitlev2>>",
+        )
+
+        while True:
+            socket_path = hypr_socket_path(".socket2.sock")
+            if not socket_path:
+                time.sleep(1.0)
+                continue
+
+            try:
+                with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+                    client.connect(str(socket_path))
+                    stream = client.makefile("r", encoding="utf-8", errors="replace")
+                    for event in stream:
+                        if event.startswith(relevant):
+                            self.dirty.set()
+            except OSError:
+                time.sleep(0.5)
+
+
+def load_hook_records() -> dict[tuple[int, int], dict]:
+    records = {}
+    try:
+        paths = list(SESSIONS_DIR.glob("*.json"))
+    except OSError:
+        return records
+
+    for path in paths:
+        record = load_json(path, {})
+        if not isinstance(record, dict):
+            continue
+        try:
+            key = (int(record["pid"]), int(record["start_ticks"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        previous = records.get(key)
+        if not previous or float(record.get("updated_at") or 0) >= float(previous.get("updated_at") or 0):
+            records[key] = record
+
+    return records
+
+
+def title_state(title: str) -> str:
+    lowered = title.casefold()
+    if "approval required" in lowered or "permission required" in lowered:
+        return "approval"
+    if "action required" in lowered:
+        return "done"
+    stripped = title.lstrip("[ .]│ ")
+    if stripped and stripped[0] in SPINNER_CHARS:
+        return "working"
+    return "idle"
+
+
+def process_key(process: dict) -> str:
+    return f"{process['pid']}:{process['start_ticks']}"
+
+
+def update_fallback(fallback: dict, process: dict, derived_state: str, now: float) -> tuple[dict, bool]:
+    processes = fallback.setdefault("processes", {})
+    key = process_key(process)
+    previous = processes.get(key, {})
+    previous_state = str(previous.get("state") or "")
+    effective_state = derived_state
+    changed = False
+    generation = int(previous.get("generation") or 0)
+    attention_generation = int(previous.get("attention_generation") or 0)
+    started_at = previous.get("started_at")
+    finished_at = previous.get("finished_at")
+    attention_at = previous.get("attention_at")
+
+    # Codex briefly advertises completion in the terminal title, then restores
+    # the normal title. Keep unseen terminal-derived states until a new turn.
+    if derived_state == "idle" and previous_state in {"done", "approval"}:
+        effective_state = previous_state
+
+    if derived_state == "working" and (previous_state != "working" or not started_at):
+        started_at = now
+        changed = True
+    if derived_state == "done" and previous_state != "done":
+        generation += 1
+        finished_at = now
+        changed = True
+    elif derived_state == "approval" and previous_state != "approval":
+        attention_generation += 1
+        attention_at = now
+        changed = True
+
+    current = {
+        "state": effective_state,
+        "generation": generation,
+        "attention_generation": attention_generation,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "attention_at": attention_at,
+        "updated_at": now,
+    }
+    if any(
+        previous.get(field) != current.get(field)
+        for field in (
+            "state",
+            "generation",
+            "attention_generation",
+            "started_at",
+            "finished_at",
+            "attention_at",
+        )
+    ):
+        changed = True
+    processes[key] = current
+    return current, changed
+
+
+def window_for_process(process: dict, clients: list[dict]) -> dict | None:
+    by_pid = {}
+    for client in clients:
+        try:
+            by_pid.setdefault(int(client.get("pid")), []).append(client)
+        except (TypeError, ValueError):
+            continue
+
+    for ancestor in walk_ancestors(int(process["pid"])):
+        matches = by_pid.get(ancestor)
+        if not matches:
+            continue
+        return min(matches, key=lambda item: int(item.get("focusHistoryID", 9999)))
+    return None
+
+
+def project_name(cwd: str) -> str:
+    cleaned = cwd.rstrip("/")
+    if not cleaned:
+        return "Codex"
+    return os.path.basename(cleaned) or cleaned
+
+
+def build_agents(
+    processes: dict[int, dict],
+    clients: list[dict],
+    records: dict[tuple[int, int], dict],
+    fallback: dict,
+    now: float,
+) -> tuple[list[dict], bool]:
+    agents = []
+    fallback_changed = False
+    live_keys = set()
+
+    for process in processes.values():
+        proc_key = process_key(process)
+        live_keys.add(proc_key)
+        window = window_for_process(process, clients)
+        title = str((window or {}).get("title") or "")
+        derived = title_state(title)
+        fallback_record, changed = update_fallback(fallback, process, derived, now)
+        fallback_changed = fallback_changed or changed
+        record = records.get((int(process["pid"]), int(process["start_ticks"])))
+
+        if record:
+            state = str(record.get("state") or "idle")
+            if derived == "working":
+                state = "working"
+            elif derived in ("done", "approval") and state == "working":
+                state = derived
+            cwd = str(record.get("cwd") or process.get("cwd") or "")
+            model = str(record.get("model") or "")
+            started_at = record.get("started_at")
+            finished_at = record.get("finished_at")
+            attention_at = record.get("attention_at")
+            completion_key = str(record.get("completion_key") or "")
+            attention_key = str(record.get("attention_key") or "")
+            subagents = len(record.get("subagents") or {})
+            session_id = str(record.get("session_id") or "")
+        else:
+            state = str(fallback_record.get("state") or "idle")
+            cwd = str(process.get("cwd") or "")
+            model = ""
+            started_at = fallback_record.get("started_at") if state == "working" else None
+            finished_at = fallback_record.get("finished_at")
+            attention_at = fallback_record.get("attention_at")
+            generation = int(fallback_record.get("generation") or 0)
+            completion_key = f"fallback:{proc_key}:done:{generation}" if state == "done" else ""
+            attention_generation = int(fallback_record.get("attention_generation") or 0)
+            attention_key = (
+                f"fallback:{proc_key}:approval:{attention_generation}" if state == "approval" else ""
+            )
+            subagents = 0
+            session_id = ""
+
+        if state == "done" and not completion_key:
+            generation = int(fallback_record.get("generation") or 0)
+            completion_key = f"fallback:{proc_key}:done:{generation}"
+            finished_at = finished_at or fallback_record.get("finished_at") or now
+        if state == "approval" and not attention_key:
+            attention_generation = int(fallback_record.get("attention_generation") or 0)
+            attention_key = f"fallback:{proc_key}:approval:{attention_generation}"
+            attention_at = attention_at or fallback_record.get("attention_at") or now
+
+        workspace = (window or {}).get("workspace") or {}
+        workspace_name = str(workspace.get("name") or workspace.get("id") or "")
+        address = str((window or {}).get("address") or "")
+
+        agents.append(
+            {
+                "key": proc_key,
+                "pid": int(process["pid"]),
+                "start_ticks": int(process["start_ticks"]),
+                "session_id": session_id,
+                "name": project_name(cwd),
+                "cwd": cwd,
+                "model": model,
+                "state": state,
+                "started_at": started_at,
+                "finished_at": finished_at,
+                "attention_at": attention_at,
+                "completion_key": completion_key,
+                "attention_key": attention_key,
+                "subagents": subagents,
+                "workspace": workspace_name,
+                "window_address": address,
+                "window_pid": int((window or {}).get("pid") or 0),
+                "focused": int((window or {}).get("focusHistoryID", -1)) == 0,
+                "title": title,
+            }
+        )
+
+    fallback_processes = fallback.setdefault("processes", {})
+    for stale_key in list(fallback_processes):
+        if stale_key not in live_keys:
+            fallback_processes.pop(stale_key, None)
+            fallback_changed = True
+
+    agents.sort(key=agent_sort_key)
+    return agents, fallback_changed
+
+
+def workspace_sort_key(workspace: str):
+    try:
+        return 0, int(workspace)
+    except (TypeError, ValueError):
+        return 1, str(workspace)
+
+
+def agent_sort_key(agent: dict):
+    return (*workspace_sort_key(agent.get("workspace", "")), int(agent.get("pid") or 0))
+
+
+def seen_items() -> dict[str, float]:
+    data = load_json(SEEN_PATH, {})
+    items = data.get("items", {}) if isinstance(data, dict) else {}
+    return items if isinstance(items, dict) else {}
+
+
+def unseen_done(agents: list[dict], seen: dict[str, float]) -> list[dict]:
+    return sorted(
+        [
+            agent
+            for agent in agents
+            if agent.get("state") == "done"
+            and agent.get("completion_key")
+            and agent["completion_key"] not in seen
+        ],
+        key=lambda agent: float(agent.get("finished_at") or 0),
+    )
+
+
+def unseen_approvals(agents: list[dict], seen: dict[str, float]) -> list[dict]:
+    return sorted(
+        [
+            agent
+            for agent in agents
+            if agent.get("state") == "approval"
+            and agent.get("attention_key")
+            and agent["attention_key"] not in seen
+        ],
+        key=lambda agent: float(agent.get("attention_at") or 0),
+    )
+
+
+def module_text(agents: list[dict], seen: dict[str, float]) -> tuple[str, list[str]]:
+    total = len(agents)
+    done = unseen_done(agents, seen)
+    approvals = unseen_approvals(agents, seen)
+    working = [agent for agent in agents if agent.get("state") == "working"]
+
+    icon = f'<span foreground="{COLOR_TEXT}">{ICON}</span>'
+    count = f'<span foreground="{COLOR_MUTED}">{total}</span>'
+    parts = [icon, count]
+    classes = []
+
+    if not agents:
+        parts.append(f'<span foreground="{COLOR_SUBTLE}">·</span>')
+        classes.append("none")
+    elif working:
+        classes.append("working")
+    elif done:
+        classes.append("done")
+    elif approvals:
+        classes.append("attention")
+    else:
+        parts.append(f'<span foreground="{COLOR_MUTED}">○</span>')
+        classes.append("idle")
+
+    if done:
+        parts.append(f'<span foreground="{COLOR_DONE}">✓{len(done)}</span>')
+        classes.append("has-done")
+    if approvals:
+        parts.append(f'<span foreground="{COLOR_APPROVAL}">!{len(approvals)}</span>')
+        classes.append("has-approval")
+
+    return " ".join(parts), classes
+
+
+def short_age(timestamp, now: float, suffix: bool = False) -> str:
+    if not timestamp:
+        return "now"
+    seconds = max(0, int(now - float(timestamp)))
+    if seconds < 60:
+        value = "<1m"
+    elif seconds < 3600:
+        value = f"{seconds // 60}m"
+    elif seconds < 86400:
+        value = f"{seconds // 3600}h"
+    else:
+        value = f"{seconds // 86400}d"
+    return f"{value} ago" if suffix else value
+
+
+def truncate(value: str, limit: int) -> str:
+    compact = " ".join(value.split())
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 1].rstrip() + "…"
+
+
+def tooltip_markup(agents: list[dict], seen: dict[str, float], now: float) -> str:
+    total = len(agents)
+    done = unseen_done(agents, seen)
+    approvals = unseen_approvals(agents, seen)
+    working = [agent for agent in agents if agent.get("state") == "working"]
+
+    summary = [f"{total} live"]
+    if working:
+        summary.append(f"{len(working)} working")
+    if done:
+        summary.append(f"{len(done)} ready")
+    if approvals:
+        summary.append(f"{len(approvals)} approval")
+
+    lines = [
+        f'<span weight="bold" foreground="{COLOR_TEXT}">CODEX</span>  '
+        f'<span foreground="{COLOR_MUTED}">{escape(" · ".join(summary))}</span>'
+    ]
+
+    if not agents:
+        lines.extend(["", f'<span foreground="{COLOR_MUTED}">No live agents</span>'])
+        return "\n".join(lines)
+
+    next_key = done[0].get("completion_key") if done else ""
+
+    def tooltip_order(agent: dict):
+        completion_key = agent.get("completion_key")
+        attention_key = agent.get("attention_key")
+        if completion_key and completion_key not in seen and agent.get("state") == "done":
+            return 0, float(agent.get("finished_at") or 0)
+        if attention_key and attention_key not in seen and agent.get("state") == "approval":
+            return 1, float(agent.get("attention_at") or 0)
+        if agent.get("state") == "working":
+            return 2, float(agent.get("started_at") or 0)
+        if agent.get("state") == "idle":
+            return 3, agent_sort_key(agent)
+        return 4, agent_sort_key(agent)
+
+    for agent in sorted(agents, key=tooltip_order):
+        state = agent.get("state")
+        is_seen = bool(agent.get("completion_key") and agent["completion_key"] in seen)
+        if state == "working":
+            symbol, color = "●", COLOR_ACCENT
+            detail = f"working · {short_age(agent.get('started_at'), now)}"
+        elif state == "approval":
+            symbol, color = "!", COLOR_APPROVAL
+            detail = f"approval · {short_age(agent.get('attention_at'), now, suffix=True)}"
+        elif state == "done":
+            symbol, color = "✓", COLOR_MUTED if is_seen else COLOR_DONE
+            label = "seen" if is_seen else "complete"
+            detail = f"{label} · {short_age(agent.get('finished_at'), now, suffix=True)}"
+        else:
+            symbol, color = "○", COLOR_MUTED
+            detail = "idle"
+
+        if agent.get("model"):
+            detail += f" · {agent['model']}"
+        if int(agent.get("subagents") or 0):
+            detail += f" · {agent['subagents']} subagents"
+
+        name = truncate(str(agent.get("name") or "Codex"), 22)
+        workspace = str(agent.get("workspace") or "background")
+        marker = ""
+        if next_key and agent.get("completion_key") == next_key:
+            marker = f'  <span weight="bold" foreground="{COLOR_ACCENT}">NEXT</span>'
+        elif agent.get("focused"):
+            marker = f'  <span foreground="{COLOR_MUTED}">HERE</span>'
+
+        lines.extend(
+            [
+                "",
+                f'<span foreground="{color}">{symbol}</span>  '
+                f'<span weight="bold" foreground="{COLOR_TEXT}">{escape(name)}</span>  '
+                f'<span foreground="{COLOR_MUTED}">ws {escape(workspace)}</span>{marker}',
+                f'<span foreground="{COLOR_MUTED}">   {escape(detail)}</span>',
+            ]
+        )
+
+    return "\n".join(lines)
+
+
+def waybar_payload(agents: list[dict], seen: dict[str, float], now: float) -> dict:
+    text, classes = module_text(agents, seen)
+    return {
+        "text": text,
+        "tooltip": tooltip_markup(agents, seen, now),
+        "class": classes,
+    }
+
+
+def watch_main() -> int:
+    ensure_runtime()
+    events = HyprlandEvents()
+    events.start()
+
+    processes = {}
+    clients = []
+    records = {}
+    fallback = load_json(FALLBACK_PATH, {"version": 1, "processes": {}})
+    if not isinstance(fallback, dict):
+        fallback = {"version": 1, "processes": {}}
+    agents = []
+    seen = seen_items()
+    last_output = ""
+    last_snapshot = ""
+    next_process_refresh = 0.0
+    next_state_refresh = 0.0
+    next_client_refresh = 0.0
+    last_client_refresh = 0.0
+
+    while True:
+        now = time.time()
+        rebuild = False
+
+        if now >= next_process_refresh:
+            discovered = discover_codex_processes()
+            if canonical_json(discovered) != canonical_json(processes):
+                processes = discovered
+                rebuild = True
+                events.dirty.set()
+            next_process_refresh = now + PROCESS_REFRESH
+
+        event_refresh = events.dirty.is_set() and now - last_client_refresh >= CLIENT_EVENT_THROTTLE
+        if event_refresh or now >= next_client_refresh:
+            refreshed_clients = fetch_clients()
+            if canonical_json(refreshed_clients) != canonical_json(clients):
+                clients = refreshed_clients
+                rebuild = True
+            events.dirty.clear()
+            last_client_refresh = now
+            next_client_refresh = now + CLIENT_REFRESH
+
+        if now >= next_state_refresh:
+            refreshed_records = load_hook_records()
+            refreshed_seen = seen_items()
+            if canonical_json(refreshed_records) != canonical_json(records):
+                records = refreshed_records
+                rebuild = True
+            if canonical_json(refreshed_seen) != canonical_json(seen):
+                seen = refreshed_seen
+                rebuild = True
+            next_state_refresh = now + STATE_REFRESH
+
+        if rebuild or not agents and processes:
+            agents, fallback_changed = build_agents(processes, clients, records, fallback, now)
+            if fallback_changed:
+                atomic_write_json(FALLBACK_PATH, fallback)
+
+            snapshot = {"version": 1, "updated_at": now, "agents": agents}
+            snapshot_key = canonical_json({"agents": agents})
+            if snapshot_key != last_snapshot:
+                atomic_write_json(SNAPSHOT_PATH, snapshot)
+                last_snapshot = snapshot_key
+
+        payload = waybar_payload(agents, seen, now)
+        output = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        if output != last_output:
+            print(output, flush=True)
+            last_output = output
+
+        time.sleep(STATE_REFRESH)
+
+
+def mark_seen(key: str) -> None:
+    if not key:
+        return
+    with state_lock():
+        data = load_json(SEEN_PATH, {"version": 1, "items": {}})
+        if not isinstance(data, dict):
+            data = {"version": 1, "items": {}}
+        items = data.setdefault("items", {})
+        if not isinstance(items, dict):
+            items = {}
+            data["items"] = items
+        cutoff = time.time() - 7 * 86400
+        data["items"] = {item: stamp for item, stamp in items.items() if float(stamp or 0) >= cutoff}
+        data["items"][key] = time.time()
+        atomic_write_json(SEEN_PATH, data)
+
+
+def focus_agent(agent: dict) -> bool:
+    address = str(agent.get("window_address") or "")
+    workspace = str(agent.get("workspace") or "")
+    window_pid = int(agent.get("window_pid") or 0)
+
+    if not address and not window_pid:
+        return False
+    if workspace:
+        dispatch("workspace", workspace)
+    if address and dispatch("focuswindow", f"address:{address}"):
+        return True
+    if window_pid and dispatch("focuswindow", f"pid:{window_pid}"):
+        return True
+    return False
+
+
+def cycle_target(agents: list[dict]) -> dict | None:
+    focusable = sorted(
+        [agent for agent in agents if agent.get("window_address") or agent.get("window_pid")],
+        key=agent_sort_key,
+    )
+    if not focusable:
+        return None
+    for index, agent in enumerate(focusable):
+        if agent.get("focused"):
+            return focusable[(index + 1) % len(focusable)]
+    return focusable[0]
+
+
+def focus_main(always_cycle: bool = False) -> int:
+    snapshot = load_json(SNAPSHOT_PATH, {})
+    agents = snapshot.get("agents", []) if isinstance(snapshot, dict) else []
+    if not isinstance(agents, list) or not agents:
+        return 0
+
+    seen = seen_items()
+    target = None
+    seen_key = ""
+
+    if not always_cycle:
+        done = unseen_done(agents, seen)
+        approvals = unseen_approvals(agents, seen)
+        candidates = done if done else approvals
+        for candidate in candidates:
+            if candidate.get("window_address") or candidate.get("window_pid"):
+                target = candidate
+                seen_key = str(candidate.get("completion_key") or candidate.get("attention_key") or "")
+                break
+
+    if target is None:
+        target = cycle_target(agents)
+    if target and focus_agent(target) and seen_key:
+        mark_seen(seen_key)
+    return 0
+
+
+def debug_main() -> int:
+    snapshot = load_json(SNAPSHOT_PATH, {"agents": []})
+    seen = seen_items()
+    print(json.dumps({"snapshot": snapshot, "seen": seen}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def main() -> int:
+    mode = sys.argv[1] if len(sys.argv) > 1 else "watch"
+    if mode == "hook":
+        return hook_main()
+    if mode == "focus-next":
+        return focus_main(always_cycle=False)
+    if mode == "focus-cycle":
+        return focus_main(always_cycle=True)
+    if mode == "debug":
+        return debug_main()
+    if mode == "watch":
+        return watch_main()
+    print(f"unknown mode: {mode}", file=sys.stderr)
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

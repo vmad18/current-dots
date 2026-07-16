@@ -68,6 +68,7 @@
     "exec-on-event": false,
     "tooltip": true,
     "escape": false,
+    "min-length": 8,
     "justify": "center",
     "on-click": "python3 ~/.config/waybar/scripts/codex_agents.py focus-next",
     "on-click-right": "python3 ~/.config/waybar/scripts/codex_agents.py focus-cycle"

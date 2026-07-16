@@ -17,8 +17,7 @@
 
   "modules-right":  [
 
-                      "custom/cycle_wall",
-                      "custom/codex_agents",
+                      "custom/cycle_wall", 
                       "group/desktop_info",
                       // "clock",
                       "group/hardware",
@@ -58,19 +57,6 @@
     "return-type": "json",
     "restart-interval": 2,
     "tooltip": true
-  },
-
-
-  "custom/codex_agents": {
-    "exec": "python3 ~/.config/waybar/scripts/codex_agents.py watch",
-    "return-type": "json",
-    "restart-interval": 2,
-    "exec-on-event": false,
-    "tooltip": true,
-    "escape": false,
-    "justify": "center",
-    "on-click": "python3 ~/.config/waybar/scripts/codex_agents.py focus-next",
-    "on-click-right": "python3 ~/.config/waybar/scripts/codex_agents.py focus-cycle"
   },
 
 
