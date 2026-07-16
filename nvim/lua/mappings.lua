@@ -40,6 +40,15 @@ if vim.g.neovide then
     save_neovide_scale()
   end, { desc = "Reset Neovide zoom" })
 
+  local function paste_from_clipboard()
+    vim.api.nvim_paste(vim.fn.getreg "+", true, -1)
+  end
+
+  map({ "n", "i", "v", "c", "t" }, "<S-C-v>", paste_from_clipboard, {
+    silent = true,
+    desc = "Paste from system clipboard",
+  })
+
   vim.api.nvim_create_autocmd("VimLeavePre", {
     group = vim.api.nvim_create_augroup("neovide_scale_save", { clear = true }),
     callback = save_neovide_scale,
