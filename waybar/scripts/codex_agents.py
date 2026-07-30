@@ -22,6 +22,9 @@ STATE_REFRESH = 0.22
 PROCESS_REFRESH = 2.0
 CLIENT_REFRESH = 2.0
 CLIENT_EVENT_THROTTLE = 0.30
+TMUX_REFRESH = 0.45
+TMUX_CLIENT_REFRESH = 2.0
+TMUX_SEPARATOR = "\x1f"
 
 RUNTIME_ROOT = Path(
     os.environ.get(
@@ -349,6 +352,131 @@ def fetch_clients() -> list[dict]:
             return []
 
 
+def fetch_tmux_panes() -> list[dict]:
+    fields = (
+        "#{session_name}",
+        "#{session_id}",
+        "#{window_index}",
+        "#{window_name}",
+        "#{window_id}",
+        "#{pane_index}",
+        "#{pane_id}",
+        "#{pane_pid}",
+        "#{pane_title}",
+        "#{pane_current_command}",
+        "#{pane_current_path}",
+        "#{pane_active}",
+        "#{window_active}",
+        "#{session_attached}",
+    )
+    try:
+        result = subprocess.run(
+            ["tmux", "list-panes", "-a", "-F", TMUX_SEPARATOR.join(fields)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=0.8,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+    if result.returncode != 0:
+        return []
+
+    panes = []
+    for line in result.stdout.splitlines():
+        values = line.split(TMUX_SEPARATOR)
+        if len(values) != len(fields):
+            continue
+        try:
+            pane_pid = int(values[7])
+            window_index = int(values[2])
+            pane_index = int(values[5])
+        except ValueError:
+            continue
+
+        raw_title = values[8]
+        panes.append(
+            {
+                "session_name": values[0],
+                "session_id": values[1],
+                "window_index": window_index,
+                "window_name": values[3],
+                "window_id": values[4],
+                "pane_index": pane_index,
+                "pane_id": values[6],
+                "pane_pid": pane_pid,
+                "title": clean_terminal_title(raw_title),
+                "state": title_state(raw_title),
+                "current_command": values[9],
+                "current_path": values[10],
+                "pane_active": values[11] == "1",
+                "window_active": values[12] == "1",
+                "session_attached": int(values[13] or 0),
+            }
+        )
+    return panes
+
+
+def fetch_tmux_clients() -> list[dict]:
+    fields = (
+        "#{client_name}",
+        "#{client_pid}",
+        "#{client_tty}",
+        "#{session_name}",
+        "#{session_id}",
+        "#{client_flags}",
+    )
+    try:
+        result = subprocess.run(
+            ["tmux", "list-clients", "-F", TMUX_SEPARATOR.join(fields)],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=0.8,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+
+    if result.returncode != 0:
+        return []
+
+    clients = []
+    for line in result.stdout.splitlines():
+        values = line.split(TMUX_SEPARATOR)
+        if len(values) != len(fields):
+            continue
+        try:
+            client_pid = int(values[1])
+        except ValueError:
+            continue
+        clients.append(
+            {
+                "client_name": values[0],
+                "client_pid": client_pid,
+                "client_tty": values[2],
+                "session_name": values[3],
+                "session_id": values[4],
+                "client_flags": values[5].split(","),
+            }
+        )
+    return clients
+
+
+def tmux_command(*arguments: str) -> bool:
+    try:
+        result = subprocess.run(
+            ["tmux", *arguments],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=0.8,
+        )
+        return result.returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
 def dispatch(dispatcher: str, argument: str) -> bool:
     try:
         response = hypr_request(f"dispatch {dispatcher} {argument}")
@@ -443,6 +571,13 @@ def title_state(title: str) -> str:
     return "idle"
 
 
+def clean_terminal_title(title: str) -> str:
+    stripped = title.lstrip("[ .]│ ")
+    if stripped and stripped[0] in SPINNER_CHARS:
+        stripped = stripped[1:].lstrip()
+    return stripped or title.strip()
+
+
 def process_key(process: dict) -> str:
     return f"{process['pid']}:{process['start_ticks']}"
 
@@ -502,7 +637,7 @@ def update_fallback(fallback: dict, process: dict, derived_state: str, now: floa
     return current, changed
 
 
-def window_for_process(process: dict, clients: list[dict]) -> dict | None:
+def window_for_pid(pid: int, clients: list[dict]) -> dict | None:
     by_pid = {}
     for client in clients:
         try:
@@ -510,12 +645,46 @@ def window_for_process(process: dict, clients: list[dict]) -> dict | None:
         except (TypeError, ValueError):
             continue
 
-    for ancestor in walk_ancestors(int(process["pid"])):
+    for ancestor in walk_ancestors(pid):
         matches = by_pid.get(ancestor)
         if not matches:
             continue
         return min(matches, key=lambda item: int(item.get("focusHistoryID", 9999)))
     return None
+
+
+def window_for_process(process: dict, clients: list[dict]) -> dict | None:
+    return window_for_pid(int(process["pid"]), clients)
+
+
+def tmux_pane_for_process(process: dict, panes: list[dict]) -> dict | None:
+    ancestor_order = {
+        ancestor: index for index, ancestor in enumerate(walk_ancestors(int(process["pid"])))
+    }
+    matches = [pane for pane in panes if int(pane.get("pane_pid") or 0) in ancestor_order]
+    if not matches:
+        return None
+    return min(matches, key=lambda pane: ancestor_order[int(pane["pane_pid"])])
+
+
+def tmux_client_for_pane(pane: dict, clients: list[dict]) -> dict | None:
+    session_id = str(pane.get("session_id") or "")
+    session_name = str(pane.get("session_name") or "")
+    matches = [
+        client
+        for client in clients
+        if (session_id and client.get("session_id") == session_id)
+        or (session_name and client.get("session_name") == session_name)
+    ]
+    if not matches:
+        return None
+    return min(
+        matches,
+        key=lambda client: (
+            "focused" not in client.get("client_flags", []),
+            int(client.get("client_pid") or 0),
+        ),
+    )
 
 
 def project_name(cwd: str) -> str:
@@ -528,6 +697,8 @@ def project_name(cwd: str) -> str:
 def build_agents(
     processes: dict[int, dict],
     clients: list[dict],
+    tmux_panes: list[dict],
+    tmux_clients: list[dict],
     records: dict[tuple[int, int], dict],
     fallback: dict,
     now: float,
@@ -539,9 +710,21 @@ def build_agents(
     for process in processes.values():
         proc_key = process_key(process)
         live_keys.add(proc_key)
-        window = window_for_process(process, clients)
-        title = str((window or {}).get("title") or "")
-        derived = title_state(title)
+        tmux_pane = tmux_pane_for_process(process, tmux_panes)
+        tmux_client = tmux_client_for_pane(tmux_pane, tmux_clients) if tmux_pane else None
+        if tmux_client:
+            window = window_for_pid(int(tmux_client["client_pid"]), clients)
+        elif tmux_pane:
+            window = None
+        else:
+            window = window_for_process(process, clients)
+
+        if tmux_pane:
+            title = str(tmux_pane.get("title") or "")
+            derived = str(tmux_pane.get("state") or "idle")
+        else:
+            title = str((window or {}).get("title") or "")
+            derived = title_state(title)
         fallback_record, changed = update_fallback(fallback, process, derived, now)
         fallback_changed = fallback_changed or changed
         record = records.get((int(process["pid"]), int(process["start_ticks"])))
@@ -589,6 +772,15 @@ def build_agents(
         workspace = (window or {}).get("workspace") or {}
         workspace_name = str(workspace.get("name") or workspace.get("id") or "")
         address = str((window or {}).get("address") or "")
+        window_focused = int((window or {}).get("focusHistoryID", -1)) == 0
+        if tmux_pane:
+            focused = (
+                window_focused
+                and bool(tmux_pane.get("window_active"))
+                and bool(tmux_pane.get("pane_active"))
+            )
+        else:
+            focused = window_focused
 
         agents.append(
             {
@@ -609,8 +801,17 @@ def build_agents(
                 "workspace": workspace_name,
                 "window_address": address,
                 "window_pid": int((window or {}).get("pid") or 0),
-                "focused": int((window or {}).get("focusHistoryID", -1)) == 0,
+                "focused": focused,
                 "title": title,
+                "tmux_session": str((tmux_pane or {}).get("session_name") or ""),
+                "tmux_session_id": str((tmux_pane or {}).get("session_id") or ""),
+                "tmux_window_index": (tmux_pane or {}).get("window_index"),
+                "tmux_window_name": str((tmux_pane or {}).get("window_name") or ""),
+                "tmux_window_id": str((tmux_pane or {}).get("window_id") or ""),
+                "tmux_pane_index": (tmux_pane or {}).get("pane_index"),
+                "tmux_pane_id": str((tmux_pane or {}).get("pane_id") or ""),
+                "tmux_client_name": str((tmux_client or {}).get("client_name") or ""),
+                "tmux_attached": bool(tmux_client),
             }
         )
 
@@ -632,7 +833,17 @@ def workspace_sort_key(workspace: str):
 
 
 def agent_sort_key(agent: dict):
-    return (*workspace_sort_key(agent.get("workspace", "")), int(agent.get("pid") or 0))
+    workspace = workspace_sort_key(agent.get("workspace", ""))
+    if agent.get("tmux_pane_id"):
+        return (
+            *workspace,
+            0,
+            str(agent.get("tmux_session") or ""),
+            int(agent.get("tmux_window_index") or 0),
+            int(agent.get("tmux_pane_index") or 0),
+            int(agent.get("pid") or 0),
+        )
+    return (*workspace, 1, "", 0, 0, int(agent.get("pid") or 0))
 
 
 def seen_items() -> dict[str, float]:
@@ -728,10 +939,13 @@ def tooltip_markup(agents: list[dict], seen: dict[str, float], now: float) -> st
     done = unseen_done(agents, seen)
     approvals = unseen_approvals(agents, seen)
     working = [agent for agent in agents if agent.get("state") == "working"]
+    tmux_agents = [agent for agent in agents if agent.get("tmux_pane_id")]
 
     summary = [f"{total} live"]
     if working:
         summary.append(f"{len(working)} working")
+    if tmux_agents:
+        summary.append(f"{len(tmux_agents)} in tmux")
     if done:
         summary.append(f"{len(done)} ready")
     if approvals:
@@ -782,9 +996,20 @@ def tooltip_markup(agents: list[dict], seen: dict[str, float], now: float) -> st
             detail += f" · {agent['model']}"
         if int(agent.get("subagents") or 0):
             detail += f" · {agent['subagents']} subagents"
+        if agent.get("tmux_pane_id") and not agent.get("tmux_attached"):
+            detail += " · detached"
 
         name = truncate(str(agent.get("name") or "Codex"), 22)
-        workspace = str(agent.get("workspace") or "background")
+        workspace = str(agent.get("workspace") or "")
+        if agent.get("tmux_pane_id"):
+            session = str(agent.get("tmux_session") or "?")
+            window_index = agent.get("tmux_window_index")
+            pane_index = agent.get("tmux_pane_index")
+            location = f"tmux {session}:{window_index}.{pane_index}"
+            if workspace:
+                location += f" · ws {workspace}"
+        else:
+            location = f"ws {workspace or 'background'}"
         marker = ""
         if next_key and agent.get("completion_key") == next_key:
             marker = f'  <span weight="bold" foreground="{COLOR_ACCENT}">NEXT</span>'
@@ -796,7 +1021,7 @@ def tooltip_markup(agents: list[dict], seen: dict[str, float], now: float) -> st
                 "",
                 f'<span foreground="{color}">{symbol}</span>  '
                 f'<span weight="bold" foreground="{COLOR_TEXT}">{escape(name)}</span>  '
-                f'<span foreground="{COLOR_MUTED}">ws {escape(workspace)}</span>{marker}',
+                f'<span foreground="{COLOR_MUTED}">{escape(location)}</span>{marker}',
                 f'<span foreground="{COLOR_MUTED}">   {escape(detail)}</span>',
             ]
         )
@@ -820,6 +1045,8 @@ def watch_main() -> int:
 
     processes = {}
     clients = []
+    tmux_panes = []
+    tmux_clients = []
     records = {}
     fallback = load_json(FALLBACK_PATH, {"version": 1, "processes": {}})
     if not isinstance(fallback, dict):
@@ -831,6 +1058,8 @@ def watch_main() -> int:
     next_process_refresh = 0.0
     next_state_refresh = 0.0
     next_client_refresh = 0.0
+    next_tmux_refresh = 0.0
+    next_tmux_client_refresh = 0.0
     last_client_refresh = 0.0
 
     while True:
@@ -855,6 +1084,20 @@ def watch_main() -> int:
             last_client_refresh = now
             next_client_refresh = now + CLIENT_REFRESH
 
+        if now >= next_tmux_refresh:
+            refreshed_tmux_panes = fetch_tmux_panes()
+            if canonical_json(refreshed_tmux_panes) != canonical_json(tmux_panes):
+                tmux_panes = refreshed_tmux_panes
+                rebuild = True
+            next_tmux_refresh = now + (TMUX_REFRESH if refreshed_tmux_panes else PROCESS_REFRESH)
+
+        if now >= next_tmux_client_refresh:
+            refreshed_tmux_clients = fetch_tmux_clients()
+            if canonical_json(refreshed_tmux_clients) != canonical_json(tmux_clients):
+                tmux_clients = refreshed_tmux_clients
+                rebuild = True
+            next_tmux_client_refresh = now + TMUX_CLIENT_REFRESH
+
         if now >= next_state_refresh:
             refreshed_records = load_hook_records()
             refreshed_seen = seen_items()
@@ -867,7 +1110,15 @@ def watch_main() -> int:
             next_state_refresh = now + STATE_REFRESH
 
         if rebuild or not agents and processes:
-            agents, fallback_changed = build_agents(processes, clients, records, fallback, now)
+            agents, fallback_changed = build_agents(
+                processes,
+                clients,
+                tmux_panes,
+                tmux_clients,
+                records,
+                fallback,
+                now,
+            )
             if fallback_changed:
                 atomic_write_json(FALLBACK_PATH, fallback)
 
@@ -907,16 +1158,32 @@ def focus_agent(agent: dict) -> bool:
     address = str(agent.get("window_address") or "")
     workspace = str(agent.get("workspace") or "")
     window_pid = int(agent.get("window_pid") or 0)
+    tmux_pane_id = str(agent.get("tmux_pane_id") or "")
 
     if not address and not window_pid:
         return False
     if workspace:
         dispatch("workspace", workspace)
-    if address and dispatch("focuswindow", f"address:{address}"):
+
+    window_focused = False
+    if address:
+        window_focused = dispatch("focuswindow", f"address:{address}")
+    if not window_focused and window_pid:
+        window_focused = dispatch("focuswindow", f"pid:{window_pid}")
+    if not window_focused:
+        return False
+
+    if not tmux_pane_id:
         return True
-    if window_pid and dispatch("focuswindow", f"pid:{window_pid}"):
-        return True
-    return False
+
+    client_name = str(agent.get("tmux_client_name") or "")
+    session_id = str(agent.get("tmux_session_id") or "")
+    window_id = str(agent.get("tmux_window_id") or "")
+    if client_name and session_id:
+        tmux_command("switch-client", "-c", client_name, "-t", session_id)
+    if window_id and not tmux_command("select-window", "-t", window_id):
+        return False
+    return tmux_command("select-pane", "-t", tmux_pane_id)
 
 
 def cycle_target(agents: list[dict]) -> dict | None:
