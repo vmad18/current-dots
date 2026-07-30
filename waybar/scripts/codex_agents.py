@@ -25,6 +25,9 @@ CLIENT_EVENT_THROTTLE = 0.30
 TMUX_REFRESH = 0.45
 TMUX_CLIENT_REFRESH = 2.0
 TMUX_SEPARATOR = "\x1f"
+THREAD_ID_PATTERN = re.compile(
+    r"([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\.jsonl(?: \(deleted\))?$"
+)
 
 RUNTIME_ROOT = Path(
     os.environ.get(
@@ -35,6 +38,8 @@ RUNTIME_ROOT = Path(
         ),
     )
 )
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", Path.home() / ".codex"))
+SESSION_INDEX_PATH = CODEX_HOME / "session_index.jsonl"
 SESSIONS_DIR = RUNTIME_ROOT / "sessions"
 SNAPSHOT_PATH = RUNTIME_ROOT / "snapshot.json"
 SEEN_PATH = RUNTIME_ROOT / "seen.json"
@@ -122,6 +127,48 @@ def proc_cwd(pid: int) -> str:
         return ""
 
 
+def thread_id_from_rollout_path(path: str) -> str:
+    match = THREAD_ID_PATTERN.search(path)
+    return match.group(1) if match else ""
+
+
+def proc_thread_id(pid: int) -> str:
+    try:
+        descriptors = list(Path(f"/proc/{pid}/fd").iterdir())
+    except (FileNotFoundError, PermissionError, OSError):
+        return ""
+
+    for descriptor in descriptors:
+        try:
+            target = os.readlink(descriptor)
+        except OSError:
+            continue
+        thread_id = thread_id_from_rollout_path(target)
+        if thread_id:
+            return thread_id
+    return ""
+
+
+def load_thread_names() -> dict[str, str]:
+    names = {}
+    try:
+        with SESSION_INDEX_PATH.open("r", encoding="utf-8") as index:
+            for line in index:
+                try:
+                    record = json.loads(line)
+                except (json.JSONDecodeError, TypeError):
+                    continue
+                if not isinstance(record, dict):
+                    continue
+                thread_id = str(record.get("id") or "")
+                thread_name = str(record.get("thread_name") or "").strip()
+                if thread_id and thread_name:
+                    names[thread_id] = thread_name
+    except (FileNotFoundError, PermissionError, OSError):
+        return {}
+    return names
+
+
 def walk_ancestors(pid: int, limit: int = 24) -> list[int]:
     ancestors = []
     seen = set()
@@ -177,6 +224,7 @@ def discover_codex_processes() -> dict[int, dict]:
             "ppid": stat[0],
             "start_ticks": stat[1],
             "cwd": proc_cwd(pid),
+            "thread_id": proc_thread_id(pid),
         }
 
     return processes
@@ -699,6 +747,7 @@ def build_agents(
     clients: list[dict],
     tmux_panes: list[dict],
     tmux_clients: list[dict],
+    thread_names: dict[str, str],
     records: dict[tuple[int, int], dict],
     fallback: dict,
     now: float,
@@ -709,6 +758,7 @@ def build_agents(
 
     for process in processes.values():
         proc_key = process_key(process)
+        process_thread_id = str(process.get("thread_id") or "")
         live_keys.add(proc_key)
         tmux_pane = tmux_pane_for_process(process, tmux_panes)
         tmux_client = tmux_client_for_pane(tmux_pane, tmux_clients) if tmux_pane else None
@@ -743,7 +793,7 @@ def build_agents(
             completion_key = str(record.get("completion_key") or "")
             attention_key = str(record.get("attention_key") or "")
             subagents = len(record.get("subagents") or {})
-            session_id = str(record.get("session_id") or "")
+            session_id = str(record.get("session_id") or process_thread_id)
         else:
             state = str(fallback_record.get("state") or "idle")
             cwd = str(process.get("cwd") or "")
@@ -758,7 +808,10 @@ def build_agents(
                 f"fallback:{proc_key}:approval:{attention_generation}" if state == "approval" else ""
             )
             subagents = 0
-            session_id = ""
+            session_id = process_thread_id
+
+        if session_id not in thread_names and process_thread_id:
+            session_id = process_thread_id
 
         if state == "done" and not completion_key:
             generation = int(fallback_record.get("generation") or 0)
@@ -781,6 +834,8 @@ def build_agents(
             )
         else:
             focused = window_focused
+        project = project_name(cwd)
+        thread_name = str(thread_names.get(session_id) or "")
 
         agents.append(
             {
@@ -788,7 +843,9 @@ def build_agents(
                 "pid": int(process["pid"]),
                 "start_ticks": int(process["start_ticks"]),
                 "session_id": session_id,
-                "name": project_name(cwd),
+                "name": thread_name or project,
+                "thread_name": thread_name,
+                "project": project,
                 "cwd": cwd,
                 "model": model,
                 "state": state,
@@ -999,17 +1056,21 @@ def tooltip_markup(agents: list[dict], seen: dict[str, float], now: float) -> st
         if agent.get("tmux_pane_id") and not agent.get("tmux_attached"):
             detail += " · detached"
 
-        name = truncate(str(agent.get("name") or "Codex"), 22)
+        name = truncate(str(agent.get("name") or "Codex"), 28)
         workspace = str(agent.get("workspace") or "")
+        pane_label = ""
         if agent.get("tmux_pane_id"):
             session = str(agent.get("tmux_session") or "?")
             window_index = agent.get("tmux_window_index")
             pane_index = agent.get("tmux_pane_index")
-            location = f"tmux {session}:{window_index}.{pane_index}"
+            if pane_index is not None:
+                pane_label = f'  <span foreground="{COLOR_MUTED}">{pane_index}</span>'
+            location = f"tmux {session}:{window_index}"
             if workspace:
                 location += f" · ws {workspace}"
         else:
             location = f"ws {workspace or 'background'}"
+        detail += f" · {location}"
         marker = ""
         if next_key and agent.get("completion_key") == next_key:
             marker = f'  <span weight="bold" foreground="{COLOR_ACCENT}">NEXT</span>'
@@ -1020,8 +1081,8 @@ def tooltip_markup(agents: list[dict], seen: dict[str, float], now: float) -> st
             [
                 "",
                 f'<span foreground="{color}">{symbol}</span>  '
-                f'<span weight="bold" foreground="{COLOR_TEXT}">{escape(name)}</span>  '
-                f'<span foreground="{COLOR_MUTED}">{escape(location)}</span>{marker}',
+                f'<span weight="bold" foreground="{COLOR_TEXT}">{escape(name)}</span>'
+                f"{pane_label}{marker}",
                 f'<span foreground="{COLOR_MUTED}">   {escape(detail)}</span>',
             ]
         )
@@ -1047,6 +1108,7 @@ def watch_main() -> int:
     clients = []
     tmux_panes = []
     tmux_clients = []
+    thread_names = {}
     records = {}
     fallback = load_json(FALLBACK_PATH, {"version": 1, "processes": {}})
     if not isinstance(fallback, dict):
@@ -1068,10 +1130,14 @@ def watch_main() -> int:
 
         if now >= next_process_refresh:
             discovered = discover_codex_processes()
+            refreshed_thread_names = load_thread_names()
             if canonical_json(discovered) != canonical_json(processes):
                 processes = discovered
                 rebuild = True
                 events.dirty.set()
+            if canonical_json(refreshed_thread_names) != canonical_json(thread_names):
+                thread_names = refreshed_thread_names
+                rebuild = True
             next_process_refresh = now + PROCESS_REFRESH
 
         event_refresh = events.dirty.is_set() and now - last_client_refresh >= CLIENT_EVENT_THROTTLE
@@ -1115,6 +1181,7 @@ def watch_main() -> int:
                 clients,
                 tmux_panes,
                 tmux_clients,
+                thread_names,
                 records,
                 fallback,
                 now,
