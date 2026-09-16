@@ -1,0 +1,274 @@
+-- FUTURE/STAGING CONFIG ONLY.
+--
+-- Hyprland does not auto-load this filename. The active configuration remains
+-- hyprland.conf until this file is deliberately reviewed and renamed to
+-- hyprland.lua.
+--
+-- Converted for Hyprland 0.56.2 from:
+--   ~/.config/hypr/hyprland.conf
+--   ~/.config/hypr/colors.conf
+--
+-- Before activating this in a later Hyprland release, validate it against that
+-- release and review the migration notes near the layer rules and media binds.
+
+-------------------------------
+-- Environment
+-------------------------------
+
+hl.env("LIBVA_DRIVER_NAME", "nvidia")
+hl.env("XDG_SESSION_TYPE", "wayland")
+hl.env("GBM_BACKEND", "nvidia-drm")
+hl.env("__GLX_VENDOR_LIBRARY_NAME", "nvidia")
+hl.env("WLR_NO_HARDWARE_CURSORS", "1")
+hl.env("XCURSOR_SIZE", "24")
+
+-------------------------------
+-- Monitors
+-------------------------------
+
+hl.monitor({
+  output = "DP-2",
+  mode = "2560x1440@164.83",
+  position = "0x0",
+  scale = 1,
+})
+
+hl.monitor({
+  output = "DP-1",
+  mode = "1920x1080",
+  position = "2560x0",
+  scale = 1,
+})
+
+-------------------------------
+-- Autostart
+-------------------------------
+
+hl.on("hyprland.start", function()
+  local commands = {
+    "awww-daemon",
+    "nm-applet",
+    "dunst",
+    "hypridle",
+    "~/.config/hypr/xdg-portal-hyprland",
+    "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP",
+    "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP",
+    "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1",
+    "hyprctl setcursor Breeze 24",
+    "sh ~/.config/sys-scripts/launch-waybar.sh",
+  }
+
+  for _, command in ipairs(commands) do
+    hl.exec_cmd(command)
+  end
+end)
+
+-------------------------------
+-- Core settings and colors
+-------------------------------
+
+local borderActive = "rgb(9BA4FF)"
+local borderTail = "rgb(B9DBFF)"
+local borderInactive = "rgba(414868ff)"
+
+hl.config({
+  input = {
+    kb_layout = "us",
+    kb_variant = "",
+    kb_model = "",
+    kb_options = "",
+    kb_rules = "",
+    follow_mouse = 1,
+    sensitivity = 0,
+    touchpad = {
+      natural_scroll = false,
+    },
+  },
+
+  general = {
+    gaps_in = 5,
+    gaps_out = 15,
+    border_size = 2,
+    layout = "dwindle",
+    col = {
+      active_border = {
+        colors = {
+          borderActive,
+          borderActive,
+          borderActive,
+          borderActive,
+          borderActive,
+          borderTail,
+          borderInactive,
+          borderInactive,
+        },
+        angle = 270,
+      },
+      inactive_border = borderInactive,
+    },
+  },
+
+  misc = {
+    disable_hyprland_logo = true,
+  },
+
+  decoration = {
+    blur = {
+      enabled = true,
+      size = 7,
+      passes = 3,
+      new_optimizations = true,
+      ignore_opacity = false,
+    },
+    shadow = {
+      enabled = true,
+      range = 4,
+      render_power = 3,
+      color = "rgba(1a1a1aee)",
+    },
+  },
+
+  animations = {
+    enabled = true,
+  },
+
+  dwindle = {
+    preserve_split = true,
+  },
+})
+
+-- This active declaration in the legacy config comes from the upstream example.
+-- It is retained even though no device with this name is currently connected.
+hl.device({
+  name = "epic-mouse-v1",
+  sensitivity = -0.5,
+})
+
+-------------------------------
+-- Animations
+-------------------------------
+
+hl.curve("curve", {
+  type = "bezier",
+  points = { { 0.76, 0 }, { 0.24, 1 } },
+})
+
+hl.curve("smoothIn", {
+  type = "bezier",
+  points = { { 0.25, 1 }, { 0.5, 1 } },
+})
+
+hl.curve("smoothOut", {
+  type = "bezier",
+  points = { { 0.36, 0 }, { 0.66, -0.56 } },
+})
+
+hl.curve("myBezier", {
+  type = "bezier",
+  points = { { 0.05, 0.9 }, { 0.1, 1.05 } },
+})
+
+hl.curve("liner", {
+  type = "bezier",
+  points = { { 1, 1 }, { 1, 1 } },
+})
+
+hl.animation({ leaf = "windows", enabled = true, speed = 5, bezier = "myBezier" })
+hl.animation({ leaf = "windowsOut", enabled = true, speed = 4, bezier = "smoothOut" })
+hl.animation({ leaf = "fade", enabled = true, speed = 10, bezier = "smoothIn" })
+hl.animation({ leaf = "fadeDim", enabled = true, speed = 10, bezier = "smoothIn" })
+hl.animation({ leaf = "workspaces", enabled = true, speed = 6, bezier = "curve", style = "slidevert" })
+hl.animation({ leaf = "border", enabled = true, speed = 10, bezier = "liner" })
+hl.animation({ leaf = "borderangle", enabled = true, speed = 35, bezier = "liner", style = "loop" })
+
+-------------------------------
+-- Window and layer rules
+-------------------------------
+
+hl.window_rule({
+  match = { class = "^(Slack|WebCord)$" },
+  opacity = "0.94 0.94",
+})
+
+hl.window_rule({
+  match = { class = "^(Spotify)$" },
+  opacity = "0.7 0.7",
+})
+
+hl.window_rule({
+  match = { class = "^(Code)$" },
+  opacity = "0.9 0.9",
+})
+
+hl.window_rule({
+  match = { class = "^(xwaylandvideobridge)$" },
+  opacity = "0.0 override 0.0 override",
+  no_anim = true,
+  no_focus = true,
+  no_initial_focus = true,
+})
+
+hl.layer_rule({
+  match = { namespace = "waybar" },
+  blur = true,
+  ignore_alpha = 0.05,
+})
+
+-- The legacy config also declares layer blur rules using match:class for
+-- Spotify and Code. Lua layer rules only support namespace matching, and these
+-- applications are regular windows rather than layer surfaces. Those two
+-- behaviorally inert entries therefore have no valid direct Lua translation.
+
+-------------------------------
+-- Keybindings
+-------------------------------
+
+local mainMod = "SUPER"
+
+hl.bind(mainMod .. " + RETURN", hl.dsp.exec_cmd("kitty"))
+hl.bind(mainMod .. " + W", hl.dsp.window.close())
+hl.bind(mainMod .. " + L", hl.dsp.exec_cmd("hyprlock"))
+hl.bind(mainMod .. " + K", hl.dsp.exec_cmd("nmcli device disconnect wlan0 && hyprlock"))
+hl.bind(mainMod .. " + O", hl.dsp.exec_cmd("nmcli device connect wlan0"))
+hl.bind(mainMod .. " + M", hl.dsp.exec_cmd("wlogout --protocol layer-shell"))
+hl.bind(mainMod .. " + SHIFT + M", hl.dsp.exit())
+hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen())
+hl.bind(mainMod .. " + E", hl.dsp.exec_cmd("nautilus"))
+
+-- Remember each window's floating position/size; first-time terminals use 700x400.
+hl.bind(
+  mainMod .. " + V",
+  hl.dsp.exec_cmd("/usr/bin/python3 ~/.config/sys-scripts/toggle_floating.py")
+)
+
+hl.bind(mainMod .. " + SPACE", hl.dsp.exec_cmd("wofi"))
+hl.bind(mainMod .. " + P", hl.dsp.window.pseudo())
+hl.bind(mainMod .. " + J", hl.dsp.layout("togglesplit"))
+hl.bind(mainMod .. " + S", hl.dsp.exec_cmd([[grim -g "$(slurp)" - | swappy -f -]]))
+
+-- Preserve the legacy numeric bindings as explicit keycodes. Before eventual
+-- activation, confirm them with `wev` on the target keyboard.
+hl.bind("code:121", hl.dsp.exec_cmd("pamixer -t"))
+hl.bind("code:122", hl.dsp.exec_cmd("pamixer -d 5"))
+hl.bind("code:123", hl.dsp.exec_cmd("pamixer -i 5"))
+hl.bind("code:256", hl.dsp.exec_cmd("pamixer --default-source -t"))
+hl.bind("code:232", hl.dsp.exec_cmd("brightnessctl set 10%-"))
+hl.bind("code:233", hl.dsp.exec_cmd("brightnessctl set 10%+"))
+
+hl.bind(mainMod .. " + left", hl.dsp.focus({ direction = "left" }))
+hl.bind(mainMod .. " + right", hl.dsp.focus({ direction = "right" }))
+hl.bind(mainMod .. " + up", hl.dsp.focus({ direction = "up" }))
+hl.bind(mainMod .. " + down", hl.dsp.focus({ direction = "down" }))
+
+for workspace = 1, 10 do
+  local key = workspace % 10
+  hl.bind(mainMod .. " + " .. key, hl.dsp.focus({ workspace = workspace }))
+  hl.bind(mainMod .. " + SHIFT + " .. key, hl.dsp.window.move({ workspace = workspace }))
+end
+
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("pkill wlsunset || wlsunset -T 4500"))
+hl.bind(mainMod .. " + mouse_down", hl.dsp.focus({ workspace = "e+1" }))
+hl.bind(mainMod .. " + mouse_up", hl.dsp.focus({ workspace = "e-1" }))
+
+hl.bind(mainMod .. " + mouse:272", hl.dsp.window.drag(), { mouse = true })
+hl.bind(mainMod .. " + mouse:273", hl.dsp.window.resize(), { mouse = true })

@@ -116,7 +116,7 @@ ZSH_HIGHLIGHT_STYLES[function]='fg=green'
 ZSH_HIGHLIGHT_STYLES[command]='fg=green'
 export ml_env="/home/v18/Documents/Code/ml/ml-env/bin/activate"
 export PICO_SDK_PATH="$HOME/Documents/Code/clibs/pi/pico-sdk"
-alias ml_env="source '$(echo $ml_env)'"
+alias ml-env="source '$(echo $ml_env)'"
 alias change_bg="sh ~/.config/sys-scripts/background/randbg.sh $1"
 alias img_view="sxiv $1"
 alias save-style="sh ~/.config/style-change/save_current_state.sh $1"
@@ -126,17 +126,6 @@ alias vim="nvim"
 alias ssh_tuo="TERM=xterm ssh -l madan2 tuo.llnl.gov"
 
 alias strg="df -h ."
-
-cchat() {
-  if (( $# == 0 )); then
-    echo "Usage: cchat <query>" >&2
-    return 2
-  fi
-
-  codex --ask-for-approval never exec -m gpt-5.5 -c model_reasoning_effort=\"medium\" \
-    --ephemeral --skip-git-repo-check --sandbox read-only -C "$PWD" \
-    "Answer this quick shell query concisely. Do not edit files. Query: $*"
-}
 
 # export MANPATH="/usr/local/man:$MANPATH"
 

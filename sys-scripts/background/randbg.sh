@@ -11,5 +11,5 @@ fi
 printf "%s\n" $1 > "${bg_path}.md"
 cp $1 "${bg_path}"
 
-swww img --transition-type wipe --transition-angle 30 --transition-step 90 $1
+awww img --transition-type wipe --transition-angle 30 --transition-step 90 $1
 

@@ -145,9 +145,11 @@
 
 
   "custom/clock_weather": {
-    "exec": "python3 ~/.config/waybar/scripts/clock_weather.py",
+    "exec": "exec /home/v18/Documents/Code/projects/start-up-task-list/.venv/bin/tasks waybar watch --weather-script /home/v18/.config/waybar/scripts/clock_weather.py",
     "return-type": "json",
-    "interval": 60,
+    "restart-interval": 2,
+    "exec-on-event": false,
+    "escape": false,
     "tooltip": true
   },
 

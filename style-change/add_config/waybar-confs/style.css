@@ -185,7 +185,7 @@ tooltip {
 
 #clock {
   /* background: transparent;  */
-  background: rgba(255, 182, 155, .5); /* @accent ; */
+  background: rgba(155, 214, 255, .47); /* @accent ; */
   border: 1.8px @bg2;
   /* opacity: 0.3; */
   color: @bg1;
@@ -287,8 +287,8 @@ tooltip {
 
 
 #custom-cycle_wall{
-  background: rgb(255, 159, 155);
-  background: linear-gradient(45deg, rgba(255, 159, 155, 1) 0%, rgba(255, 159, 155, 0.9870801033591732) 35%, rgba(255,212,155,1) 87%, rgba(255,212,155,1) 90%, rgba(255,212,155,1) 100%);  color: @text;
+  background: rgb(155, 214, 255);
+  background: linear-gradient(45deg, rgba(155, 214, 255, 1) 0%, rgba(155, 214, 255, 0.9870801033591732) 35%, rgba(155,164,255,1) 87%, rgba(155,164,255,1) 90%, rgba(155,164,255,1) 100%);  color: @text;
   background-size: 500% 500%;
   animation: gradient 5s linear infinite;
   font-weight:  bolder;

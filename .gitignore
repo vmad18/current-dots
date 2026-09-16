@@ -1,0 +1,19 @@
+# Local credentials and environment values are recreated separately.
+.env
+.env.*
+env.zsh
+credentials*.json
+client_secret*.json
+*token*.json
+
+# Keep new runtime artifacts and backups out of this configuration snapshot.
+__pycache__/
+*.py[cod]
+.cache/
+.experiments/
+backups/
+*.codex-backup-*
+*.tar.gz
+*.zip
+sys-scripts/background/next_idx.txt
+sys-scripts/background/bg.txt

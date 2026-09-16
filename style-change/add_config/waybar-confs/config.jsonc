@@ -6,18 +6,19 @@
   
   "modules-left":   [ 
                       "pulseaudio",
-                      "hyprland/workspaces",
                       "custom/spotify"],
  
 
   "modules-center": [
+                      "clock"
                     ],
   
 
   "modules-right":  [
 
                       "custom/cycle_wall", 
-                      "clock",
+                      "hyprland/workspaces",
+                      // "clock",
                       "group/hardware",
                       "tray"],
 
