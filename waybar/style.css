@@ -198,6 +198,7 @@ tooltip {
 #custom-audio_viz,
 #custom-codex_agents,
 #hardware,
+#system,
 #taskbar,
 #custom-updates, 
 #window {
@@ -439,6 +440,27 @@ tooltip {
 
 #hardware {
   margin-left: 5px;
+}
+
+/* CPU/RAM and tray share an outer island; tray stays outside the updates drawer. */
+#system {
+  margin-left: 5px;
+  margin-right: 12px;
+}
+
+#system #hardware,
+#system #tray {
+  background: transparent;
+  margin: 0px;
+  padding: 0px;
+  border: 0px;
+  border-radius: 0px;
+  box-shadow: none;
+  opacity: 1;
+}
+
+#system #tray {
+  padding-left: 10px;
 }
 
 

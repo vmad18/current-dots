@@ -27,7 +27,8 @@ review it before activation. It is not the active config.
 
 Volume/microphone and the native audio visualizer share one island on the left,
 followed by separate Spotify and Codex tracker islands. The clock stays centered.
-The right side contains wallpaper changer, desktop/workspaces, hardware, and tray.
+The right side contains wallpaper changer, desktop/workspaces, and one combined
+CPU/RAM/system-tray island. The tray remains visible outside the updates drawer.
 
 While working, the Codex tracker chooses an orange, blue, or purple background
 and scan, then switches to a different color roughly every 30 seconds. Both

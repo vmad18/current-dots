@@ -249,7 +249,9 @@ theme dependency by default.
   remove or adapt device-specific examples only in the staged destination config.
 
 The left side contains volume/native visualizer, Spotify, then the Codex tracker.
-The clock is centered; wallpaper/desktop/hardware/tray are on the right.
+The clock is centered; wallpaper, desktop/workspaces, and a combined
+CPU/RAM/system-tray island are on the right. Keep the tray outside the hardware
+updates drawer so tray icons remain visible.
 Preserve these choices unless the user requests something else.
 
 ## 7. Activate, verify, and recover

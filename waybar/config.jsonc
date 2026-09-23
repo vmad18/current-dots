@@ -20,8 +20,7 @@
                       "custom/cycle_wall",
                       "group/desktop_info",
                       // "clock",
-                      "group/hardware",
-                      "tray"],
+                      "group/system"],
 
 
   "group/media": {
@@ -230,6 +229,14 @@
     "on-scroll-down": "~/.config/hypr/scripts/brightness.sh temperature-down 100"
   },
  
+
+  "group/system": {
+    "orientation": "inherit",
+    "modules": [
+      "group/hardware",
+      "tray"
+    ]
+  },
 
   "group/hardware": {
     "orientation": "inherit",
