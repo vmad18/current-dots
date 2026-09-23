@@ -11,7 +11,17 @@ import time
 RATE = 8000
 SAMPLES = 512
 BANDS = (80, 160, 315, 630, 1000, 1600, 2500, 3500)
-LEVELS = "▁▂▃▄▅▆▇█"
+# Fixed-width cells. Rise offsets center the ink instead of its text baseline.
+CELLS = (
+    "·",
+    '<span font_desc="JetBrainsMono Nerd Font 5px" rise="2560" letter_spacing="4096">|</span>',
+    '<span font_desc="JetBrainsMono Nerd Font 7px" rise="1536" letter_spacing="3072">|</span>',
+    '<span font_desc="JetBrainsMono Nerd Font 9px" rise="512" letter_spacing="2048">|</span>',
+)
+COLUMNS = 21
+IDLE = "·" * COLUMNS
+WINDOW = tuple(0.5 - 0.5 * math.cos(2.0 * math.pi * i / (SAMPLES - 1))
+               for i in range(SAMPLES))
 
 
 def glass_envelope(previous, values, peak):
@@ -56,12 +66,19 @@ def goertzel(samples, freq):
 
 
 def render(values, peak):
+    # Low frequencies in the center, treble tapering toward the dotted ends.
+    # Plain vertical strokes avoid font-dependent braille rendering.
     chars = []
-
-    for value in values:
+    for column in range(COLUMNS):
+        distance = abs(column - COLUMNS // 2) / (COLUMNS // 2)
+        position = column / (COLUMNS - 1) * (len(values) - 1)
+        left = int(position)
+        right = min(left + 1, len(values) - 1)
+        value = values[left] + (values[right] - values[left]) * (position - left)
         normalized = min(value / peak, 1.0) if peak > 0 else 0.0
-        index = min(int(normalized * len(LEVELS)), len(LEVELS) - 1)
-        chars.append(LEVELS[index])
+        level = math.sqrt(max(normalized, 0.0)) * math.exp(-3.6 * distance ** 2)
+        index = 0 if distance > 0.9 else min(int(level * len(CELLS)), len(CELLS) - 1)
+        chars.append(CELLS[index])
 
     return "".join(chars)
 
@@ -76,32 +93,29 @@ def main():
 
     while True:
         if proc.stdout is None:
-            emit("▁▁▁▁▁▁▁▁", "muted")
+            emit(IDLE, "muted")
             return 1
 
         data = proc.stdout.read(SAMPLES * 2)
         if len(data) < SAMPLES * 2:
-            emit("▁▁▁▁▁▁▁▁", "muted")
+            emit(IDLE, "muted")
             return 1
 
         samples = struct.unpack("<" + "h" * SAMPLES, data)
-        windowed = [
-            sample * (0.5 - 0.5 * math.cos(2.0 * math.pi * i / (SAMPLES - 1)))
-            for i, sample in enumerate(samples)
-        ]
+        windowed = [sample * weight for sample, weight in zip(samples, WINDOW)]
 
         values = [goertzel(windowed, freq) for freq in BANDS]
         peak = max(max(values), peak * 0.965, 50.0)
         light = glass_envelope(light, values, peak)
         smoothed = [
-            old * 0.58 + new * 0.42
+            old + (new - old) * (0.65 if new > old else 0.22)
             for old, new in zip(smoothed, values)
         ]
 
         if max(smoothed) < 22.0:
             now = time.monotonic()
             if not was_quiet or now >= silence_until:
-                emit("▁▁▁▁▁▁▁▁", "quiet")
+                emit(IDLE, "quiet")
                 silence_until = now + 0.35
             was_quiet = True
             light = 0.0

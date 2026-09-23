@@ -147,6 +147,7 @@ For each selected component, inspect and copy only the active files it needs:
 | `waybar/config.jsonc`, `style.css`, `colors.css` | Target `waybar/` |
 | `waybar/wallpaper-cloud-blue.svg`, `wallpaper-cloud-lavender.svg` | Beside the Waybar stylesheet; required by its relative URLs |
 | `waybar/scripts/` | Reviewed Python scripts only; exclude bytecode and caches |
+| `waybar/native/audio-pill/` | Copy source/build instructions, build on the target, and adapt the CFFI library path |
 | `sys-scripts/` | Selected scripts referenced by the enabled configuration |
 | `style-change/` | Only if theme switching is wanted; inspect what its scripts overwrite |
 | `kitty/`, `dunst/`, `rofi/`, `wofi/` | Selected app configs under the target config root |
@@ -173,7 +174,8 @@ Verify current package names and availability before proposing installation.
 | --- | --- |
 | Desktop | Compatible Hyprland, Waybar, Kitty, chosen launcher, Dunst, Python 3 |
 | Fonts/images | JetBrainsMono Nerd Font, configured icon/cursor fonts and themes, GTK SVG loader supporting the cloud SVG filters |
-| Audio | Running audio server, `pactl`, `pamixer`; `parec` only if enabling the visualizer |
+| Audio | Running audio server, `pactl`, `pamixer`, `parec` for the enabled native visualizer |
+| Native visualizer build | C compiler, `pkg-config`, GTK 3/Cairo/GIO Unix development files, Waybar CFFI v2 support |
 | Spotify island | Spotify/MPRIS player, `playerctl`, `zscroll` |
 | Wallpaper | `awww` and `awww-daemon`, user-provided image files |
 | Bar watcher | `inotifywait`, `logger`, `killall`; inspect the watcher before starting |
@@ -225,6 +227,14 @@ theme dependency by default.
 - **Bar ownership:** the supplied Waybar watcher uses `killall waybar` and watches
   only config/CSS files, not SVGs. Use one owner for startup/restart; do not launch
   a second watcher per monitor. Reload the intended bar after changing SVG assets.
+- **Native visualizer:** follow [its build guide](waybar/native/audio-pill/README.md).
+  Copy the source to the target Waybar directory, run `sh build.sh` there, and
+  set `cffi/audio_pill.module_path` to the resulting absolute library path before
+  enabling it. Rebuild on each destination; never transfer a stale compiled
+  binary or an old `.experiments` path. If unavailable, remove `cffi/audio_pill`
+  from `group/media.modules` and keep the volume control working. Fully restart
+  the owning Waybar process after rebuilding the same library path, or load a
+  new filename. A config reload alone can reuse the old library.
 - **Agent tracker:** README documents intentional differences between the repo's
   tracker and the original live copy. Preserve/review that implementation. Set up
   its expected local integration separately; do not migrate Codex credentials.
@@ -234,9 +244,9 @@ theme dependency by default.
 - **Input:** review the named mouse override and keyboard/touchpad settings;
   remove or adapt device-specific examples only in the staged destination config.
 
-The current layout keeps volume/Spotify and the tracker on the left, the clock in
-the center, and wallpaper/desktop/hardware/tray on the right. The visualizer remains
-disabled. Preserve these choices unless the user requests something else.
+The current layout keeps volume/native visualizer in one island and Spotify in
+another on the left. The clock is centered; wallpaper/tracker/desktop/hardware/tray
+are on the right. Preserve these choices unless the user requests something else.
 
 ## 7. Activate, verify, and recover
 

@@ -478,84 +478,31 @@ tooltip {
 
 
 
+/* A compact dotted spectrum inspired by the reference's inset capsule. */
 #custom-audio_viz {
-  background: linear-gradient(180deg, transparent, transparent), linear-gradient(110deg, rgba(235, 250, 255, 0.00) 10%, rgba(235, 250, 255, 0.06) 34%, rgba(235, 250, 255, 0.12) 50%, rgba(235, 250, 255, 0.06) 66%, rgba(235, 250, 255, 0.00) 90%), linear-gradient(105deg, rgba(128, 192, 238, 0.88) 0%, rgba(133, 168, 240, 0.86) 52%, rgba(150, 149, 241, 0.88) 100%);
-  background-size: 100% 100%, 160px 100%, 100% 100%;
-  background-repeat: no-repeat;
-  animation: audio_stream 12s ease-in-out infinite;
-  color: #f0f5ff;
-  margin-left: 5px;
-  min-width: 74px;
-  padding-left: 8px;
-  padding-right: 8px;
-  border: 1px solid rgba(230, 245, 255, 0.28);
-  box-shadow: none;
+  background: linear-gradient(180deg, #194866, #153b56);
+  color: #a8d0ed;
+  font-family: "JetBrainsMono Nerd Font", monospace;
+  font-size: 11px;
+  font-weight: normal;
+  margin: 3px 0px 3px 5px;
+  padding: 0px 11px;
+  min-width: 140px;
+  border: 3px solid #171b20;
+  border-radius: 16px;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.28);
   text-shadow: none;
-  transition-property: border-color;
-  transition-duration: 100ms;
-  transition-timing-function: ease-out;
-  opacity: 0.92;
+  animation: none;
+  opacity: 1;
 }
 
-/* Let the reflection stop where it is when playback falls silent. */
 #custom-audio_viz.quiet,
-#custom-audio_viz.muted,
-#custom-audio_viz.error {
-  animation-play-state: paused;
+#custom-audio_viz.muted {
+  color: rgba(169, 220, 255, 0.45);
 }
 
-/* Bass gently varies the thin border without adding depth. */
-#custom-audio_viz.light-0 {
-  border-color: rgba(230, 245, 255, 0.280);
-  box-shadow: none;
-}
-#custom-audio_viz.light-1 {
-  border-color: rgba(230, 245, 255, 0.290);
-  box-shadow: none;
-}
-#custom-audio_viz.light-2 {
-  border-color: rgba(230, 245, 255, 0.300);
-  box-shadow: none;
-}
-#custom-audio_viz.light-3 {
-  border-color: rgba(230, 245, 255, 0.310);
-  box-shadow: none;
-}
-#custom-audio_viz.light-4 {
-  border-color: rgba(230, 245, 255, 0.320);
-  box-shadow: none;
-}
-#custom-audio_viz.light-5 {
-  border-color: rgba(230, 245, 255, 0.330);
-  box-shadow: none;
-}
-#custom-audio_viz.light-6 {
-  border-color: rgba(230, 245, 255, 0.340);
-  box-shadow: none;
-}
-#custom-audio_viz.light-7 {
-  border-color: rgba(230, 245, 255, 0.350);
-  box-shadow: none;
-}
-#custom-audio_viz.light-8 {
-  border-color: rgba(230, 245, 255, 0.360);
-  box-shadow: none;
-}
-#custom-audio_viz.light-9 {
-  border-color: rgba(230, 245, 255, 0.370);
-  box-shadow: none;
-}
-#custom-audio_viz.light-10 {
-  border-color: rgba(230, 245, 255, 0.380);
-  box-shadow: none;
-}
-#custom-audio_viz.light-11 {
-  border-color: rgba(230, 245, 255, 0.390);
-  box-shadow: none;
-}
-#custom-audio_viz.light-12 {
-  border-color: rgba(230, 245, 255, 0.400);
-  box-shadow: none;
+#custom-audio_viz.error {
+  color: #c5cbd5;
 }
 
 
@@ -566,13 +513,13 @@ tooltip {
   margin-left: 12px;
 }
 
-/* Volume and Spotify share the same shell treatment as CPU/RAM. */
+/* Volume and the native visualizer share one standard island. */
 #media {
   margin-left: 12px;
+  padding-right: 2px;
 }
 
-#media #pulseaudio,
-#media #custom-spotify {
+#media #pulseaudio {
   background: transparent;
   margin: 0px;
   border: 0px;
@@ -585,9 +532,6 @@ tooltip {
   padding: 0px 5px 0px 0px;
 }
 
-#media #custom-spotify {
-  padding: 0px 0px 0px 5px;
-}
 
 
 

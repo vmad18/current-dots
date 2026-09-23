@@ -25,14 +25,17 @@ review it before activation. It is not the active config.
 
 ## Waybar layout
 
-Volume/microphone and Spotify share one island on the left, followed by the
-Codex agent tracker. The clock stays centered. The wallpaper changer sits on the
-right before the desktop/workspace island, hardware metrics, and tray.
+Volume/microphone and the native audio visualizer share one island on the left,
+followed by a separate Spotify island. The clock stays centered. The right side
+contains wallpaper changer, Codex tracker, desktop/workspaces, hardware, and tray.
 
 The wallpaper island uses `waybar/wallpaper-cloud-blue.svg` and
 `waybar/wallpaper-cloud-lavender.svg` for its animated blue/purple clouds; restore
-both alongside `style.css`. The audio visualizer is disabled in the layout, but
-its module configuration, script, and styling remain available to re-enable.
+both alongside `style.css`. The 97px visualizer uses a translucent brown inset
+and orange frequency bars. Build it from
+[`waybar/native/audio-pill`](waybar/native/audio-pill/README.md) on the destination
+machine before starting Waybar; binaries are not included. The older Python
+visualizer remains available but is not enabled.
 
 ## Calendar clock dependency
 

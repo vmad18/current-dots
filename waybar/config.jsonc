@@ -6,7 +6,7 @@
   
   "modules-left":   [ 
                       "group/media",
-                      "custom/codex_agents"],
+                      "custom/spotify"],
  
 
   "modules-center": [
@@ -17,6 +17,7 @@
   "modules-right":  [
 
                       "custom/cycle_wall",
+                      "custom/codex_agents",
                       "group/desktop_info",
                       // "clock",
                       "group/hardware",
@@ -27,7 +28,7 @@
     "orientation": "inherit",
     "modules": [
       "pulseaudio",
-      "custom/spotify"
+      "cffi/audio_pill"
     ]
   },
 
@@ -88,6 +89,11 @@
     "tooltip": true
   },
 
+
+  "cffi/audio_pill": {
+    "module_path": "/home/v18/.config/waybar/native/audio-pill/build/audio_pill.so",
+    "embedded": true
+  },
 
   "custom/audio_viz": {
     "exec": "python3 ~/.config/waybar/scripts/audio_viz.py",
