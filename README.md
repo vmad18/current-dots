@@ -4,6 +4,10 @@ Selected configuration for my Arch Linux / Hyprland desktop. The app directories
 mirror the corresponding directories under `~/.config`; `zshrc` mirrors `~/.zshrc`.
 Review destination files and back them up before restoring a snapshot.
 
+**Installing on another machine?** Start with [INSTALL.md](INSTALL.md). It guides
+agents through discovery, monitor-layout questions, backups, dependencies,
+machine-specific adaptations, validation, and rollback.
+
 | Repository path | Restore location |
 | --- | --- |
 | `hypr`, `waybar`, `sys-scripts`, `style-change` | `~/.config/<directory>` |
