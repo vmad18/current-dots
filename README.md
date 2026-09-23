@@ -37,6 +37,11 @@ and orange frequency bars. Build it from
 machine before starting Waybar; binaries are not included. The older Python
 visualizer remains available but is not enabled.
 
+The cloud SVGs embed precomputed seamless textures to avoid SVG noise-filter
+seams. Regenerate them from the repository root with
+`python3 waybar/scripts/generate_wallpaper_clouds.py waybar`.
+Generation uses only Python's standard library; Waybar animates the stored images.
+
 ## Calendar clock dependency
 
 The task database, calendar synchronization, tooltip formatting, and reminder

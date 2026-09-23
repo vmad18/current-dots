@@ -173,7 +173,7 @@ Verify current package names and availability before proposing installation.
 | Feature | Capabilities to verify |
 | --- | --- |
 | Desktop | Compatible Hyprland, Waybar, Kitty, chosen launcher, Dunst, Python 3 |
-| Fonts/images | JetBrainsMono Nerd Font, configured icon/cursor fonts and themes, GTK SVG loader supporting the cloud SVG filters |
+| Fonts/images | JetBrainsMono Nerd Font, configured icon/cursor fonts and themes, GTK SVG loader supporting embedded PNG images |
 | Audio | Running audio server, `pactl`, `pamixer`, `parec` for the enabled native visualizer |
 | Native visualizer build | C compiler, `pkg-config`, GTK 3/Cairo/GIO Unix development files, Waybar CFFI v2 support |
 | Spotify island | Spotify/MPRIS player, `playerctl`, `zscroll` |
