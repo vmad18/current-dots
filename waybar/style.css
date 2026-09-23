@@ -164,14 +164,13 @@ tooltip {
 
 
 
+
 @keyframes codex_work_glow {
   0% {
     background-position: -42px 0px, 0px 0px;
-    box-shadow: inset 0 1px 0 rgba(230, 245, 255, 0.34), inset 0 -1px 0 rgba(24, 31, 68, 0.30), inset -8px 0 12px rgba(70, 139, 195, 0.10);
   }
   100% {
     background-position: 58px 0px, 0px 0px;
-    box-shadow: inset 0 1px 0 rgba(230, 245, 255, 0.42), inset 0 -1px 0 rgba(24, 31, 68, 0.34), inset 8px 0 12px rgba(82, 120, 203, 0.16);
   }
 }
 
@@ -320,8 +319,8 @@ tooltip {
   min-width: 42px;
   padding-left: 5px;
   padding-right: 5px;
-  border: 1.8px solid rgba(155, 214, 255, 0.34);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(20, 24, 48, 0.28);
+  border: 1.8px solid @bordercolor;
+  box-shadow: inset 0 0 2px 2px @bordershadow;
   opacity: 0.92;
   transition: background-color 180ms ease, border-color 180ms ease, opacity 180ms ease;
 }
@@ -329,22 +328,35 @@ tooltip {
 
 
 #custom-codex_agents.working {
-  background-color: rgba(42, 49, 76, 0.58);
-  background-image: linear-gradient(90deg, rgba(82, 120, 203, 0) 0%, rgba(82, 120, 203, 0.10) 30%, rgba(155, 214, 255, 0.34) 50%, rgba(82, 120, 203, 0.10) 70%, rgba(82, 120, 203, 0) 100%), linear-gradient(135deg, rgba(70, 139, 195, 0.48) 0%, rgba(42, 49, 76, 0.58) 48%, rgba(94, 101, 210, 0.46) 100%);
+  background-color: rgba(72, 119, 146, 0.60);
+  background-image: linear-gradient(90deg, rgba(155, 214, 255, 0) 0%, rgba(155, 214, 255, 0.10) 30%, rgba(155, 214, 255, 0.38) 50%, rgba(155, 214, 255, 0.10) 70%, rgba(155, 214, 255, 0) 100%), linear-gradient(transparent, transparent);
   background-repeat: no-repeat, no-repeat;
   background-size: 42px 100%, 100% 100%;
-  border-color: rgba(155, 214, 255, 0.62);
   animation: codex_work_glow 0.55s ease-in-out infinite alternate;
-  text-shadow: 0 0 4px rgba(155, 214, 255, 0.34);
-  opacity: 0.96;
+  text-shadow: none;
+  opacity: 0.8;
 }
 
 
 
+#custom-codex_agents.working.scan-orange {
+  background-color: rgba(83, 53, 32, 0.60);
+  background-image: linear-gradient(90deg, rgba(255, 133, 31, 0) 0%, rgba(255, 133, 31, 0.10) 30%, rgba(255, 133, 31, 0.38) 50%, rgba(255, 133, 31, 0.10) 70%, rgba(255, 133, 31, 0) 100%), linear-gradient(transparent, transparent);
+}
+
+#custom-codex_agents.working.scan-blue {
+  background-color: rgba(72, 119, 146, 0.60);
+  background-image: linear-gradient(90deg, rgba(155, 214, 255, 0) 0%, rgba(155, 214, 255, 0.10) 30%, rgba(155, 214, 255, 0.38) 50%, rgba(155, 214, 255, 0.10) 70%, rgba(155, 214, 255, 0) 100%), linear-gradient(transparent, transparent);
+}
+
+#custom-codex_agents.working.scan-purple {
+  background-color: rgba(65, 49, 92, 0.60);
+  background-image: linear-gradient(90deg, rgba(177, 133, 255, 0) 0%, rgba(177, 133, 255, 0.10) 30%, rgba(177, 133, 255, 0.38) 50%, rgba(177, 133, 255, 0.10) 70%, rgba(177, 133, 255, 0) 100%), linear-gradient(transparent, transparent);
+}
+
 #custom-codex_agents.done {
   background: linear-gradient(135deg, rgba(70, 139, 195, 0.34) 0%, rgba(52, 61, 91, 0.62) 48%, rgba(94, 101, 210, 0.38) 100%);
-  border-color: rgba(169, 220, 255, 0.78);
-  box-shadow: inset 0 1px 0 rgba(235, 248, 255, 0.38), inset 0 -1px 0 rgba(25, 30, 68, 0.34), inset 0 0 8px rgba(155, 214, 255, 0.13);
+  box-shadow: inset 0 0 2px 2px @bordershadow;
   opacity: 0.96;
 }
 
@@ -352,8 +364,7 @@ tooltip {
 
 #custom-codex_agents.attention {
   background: linear-gradient(135deg, rgba(196, 145, 73, 0.34) 0%, rgba(55, 51, 58, 0.66) 52%, rgba(94, 101, 210, 0.22) 100%);
-  border-color: rgba(242, 200, 121, 0.72);
-  box-shadow: inset 0 1px 0 rgba(255, 239, 202, 0.28), inset 0 -1px 0 rgba(58, 40, 26, 0.34);
+  box-shadow: inset 0 0 2px 2px @bordershadow;
   opacity: 0.94;
 }
 
@@ -361,8 +372,7 @@ tooltip {
 
 #custom-codex_agents.idle {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.11) 0%, rgba(255, 255, 255, 0.02) 42%, rgba(32, 35, 48, 0.18) 100%), rgba(55, 58, 69, 0.46);
-  border-color: rgba(155, 214, 255, 0.24);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 -1px 0 rgba(20, 24, 38, 0.24);
+  box-shadow: inset 0 0 2px 2px @bordershadow;
   opacity: 0.74;
 }
 
@@ -370,15 +380,8 @@ tooltip {
 
 #custom-codex_agents.none {
   background: rgba(48, 50, 59, 0.30);
-  border-color: rgba(126, 136, 158, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.10);
+  box-shadow: inset 0 0 2px 2px @bordershadow;
   opacity: 0.52;
-}
-
-
-
-#custom-codex_agents.working.has-done {
-  border-color: rgba(169, 220, 255, 0.82);
 }
 
 

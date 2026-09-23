@@ -238,15 +238,19 @@ theme dependency by default.
 - **Agent tracker:** README documents intentional differences between the repo's
   tracker and the original live copy. Preserve/review that implementation. Set up
   its expected local integration separately; do not migrate Codex credentials.
+  Install `codex_scan_palette.py` alongside `codex_agents.py`. The helper shares
+  active colors across monitors and changes them about every 30 seconds. Its
+  `scan-palette.json` is generated under the tracker's runtime directory; do not
+  copy that state from another machine or persist it in the dotfiles repository.
 - **Shell:** review hard-coded Java/ML/SDK paths, custom aliases, plugin paths, and
   missing shell helpers before replacing `.zshrc`. Installing dots does not
   authorize changing the login shell.
 - **Input:** review the named mouse override and keyboard/touchpad settings;
   remove or adapt device-specific examples only in the staged destination config.
 
-The current layout keeps volume/native visualizer in one island and Spotify in
-another on the left. The clock is centered; wallpaper/tracker/desktop/hardware/tray
-are on the right. Preserve these choices unless the user requests something else.
+The left side contains volume/native visualizer, Spotify, then the Codex tracker.
+The clock is centered; wallpaper/desktop/hardware/tray are on the right.
+Preserve these choices unless the user requests something else.
 
 ## 7. Activate, verify, and recover
 

@@ -26,8 +26,15 @@ review it before activation. It is not the active config.
 ## Waybar layout
 
 Volume/microphone and the native audio visualizer share one island on the left,
-followed by a separate Spotify island. The clock stays centered. The right side
-contains wallpaper changer, Codex tracker, desktop/workspaces, hardware, and tray.
+followed by separate Spotify and Codex tracker islands. The clock stays centered.
+The right side contains wallpaper changer, desktop/workspaces, hardware, and tray.
+
+While working, the Codex tracker chooses an orange, blue, or purple background
+and scan, then switches to a different color roughly every 30 seconds. Both
+monitors share that choice through a locked runtime state file. Inactive
+backgrounds keep their existing colors; the tracker uses the standard island
+border. Restore `waybar/scripts/codex_scan_palette.py` beside `codex_agents.py`.
+Check the palette behavior with `python3 -m unittest discover -s waybar/tests -v`.
 
 The wallpaper island uses `waybar/wallpaper-cloud-blue.svg` and
 `waybar/wallpaper-cloud-lavender.svg` for its animated blue/purple clouds; restore

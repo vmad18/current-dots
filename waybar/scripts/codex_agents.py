@@ -14,6 +14,7 @@ import time
 from contextlib import contextmanager
 from html import escape
 from pathlib import Path
+from codex_scan_palette import ScanPalette
 
 
 ICON = ""
@@ -1101,6 +1102,8 @@ def waybar_payload(agents: list[dict], seen: dict[str, float], now: float) -> di
 
 def watch_main() -> int:
     ensure_runtime()
+    palette = ScanPalette(RUNTIME_ROOT / "scan-palette.json", state_lock,
+                          load_json, atomic_write_json)
     events = HyprlandEvents()
     events.start()
 
@@ -1196,6 +1199,9 @@ def watch_main() -> int:
                 last_snapshot = snapshot_key
 
         payload = waybar_payload(agents, seen, now)
+        scan_color = palette.color_for("working" in payload["class"])
+        if scan_color:
+            payload["class"].append("scan-" + scan_color)
         output = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         if output != last_output:
             print(output, flush=True)

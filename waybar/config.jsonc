@@ -6,7 +6,8 @@
   
   "modules-left":   [ 
                       "group/media",
-                      "custom/spotify"],
+                      "custom/spotify",
+                      "custom/codex_agents"],
  
 
   "modules-center": [
@@ -17,7 +18,6 @@
   "modules-right":  [
 
                       "custom/cycle_wall",
-                      "custom/codex_agents",
                       "group/desktop_info",
                       // "clock",
                       "group/hardware",
