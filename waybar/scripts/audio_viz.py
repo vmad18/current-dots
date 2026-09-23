@@ -14,6 +14,12 @@ BANDS = (80, 160, 315, 630, 1000, 1600, 2500, 3500)
 LEVELS = "▁▂▃▄▅▆▇█"
 
 
+def glass_envelope(previous, values, peak):
+    # Low bands illuminate the glass; slow release keeps the reflection soft.
+    target = min(max(values[:3]) / max(peak, 120.0), 1.0)
+    return previous + (target - previous) * (0.65 if target > previous else 0.16)
+
+
 def emit(text, css_class="normal"):
     print(json.dumps({"text": text, "class": css_class}, ensure_ascii=False), flush=True)
 
@@ -65,6 +71,8 @@ def main():
     peak = 500.0
     smoothed = [0.0] * len(BANDS)
     silence_until = 0.0
+    light = 0.0
+    was_quiet = True
 
     while True:
         if proc.stdout is None:
@@ -84,6 +92,7 @@ def main():
 
         values = [goertzel(windowed, freq) for freq in BANDS]
         peak = max(max(values), peak * 0.965, 50.0)
+        light = glass_envelope(light, values, peak)
         smoothed = [
             old * 0.58 + new * 0.42
             for old, new in zip(smoothed, values)
@@ -91,12 +100,15 @@ def main():
 
         if max(smoothed) < 22.0:
             now = time.monotonic()
-            if now >= silence_until:
+            if not was_quiet or now >= silence_until:
                 emit("▁▁▁▁▁▁▁▁", "quiet")
                 silence_until = now + 0.35
+            was_quiet = True
+            light = 0.0
             continue
 
-        emit(render(smoothed, peak))
+        was_quiet = False
+        emit(render(smoothed, peak), ["normal", f"light-{round(light * 12)}"])
 
 
 if __name__ == "__main__":

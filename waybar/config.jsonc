@@ -5,9 +5,8 @@
   "mod": "dock",
   
   "modules-left":   [ 
-                      "pulseaudio",
-                      "custom/audio_viz",
-                      "custom/spotify"],
+                      "group/media",
+                      "custom/codex_agents"],
  
 
   "modules-center": [
@@ -18,12 +17,19 @@
   "modules-right":  [
 
                       "custom/cycle_wall",
-                      "custom/codex_agents",
                       "group/desktop_info",
                       // "clock",
                       "group/hardware",
                       "tray"],
 
+
+  "group/media": {
+    "orientation": "inherit",
+    "modules": [
+      "pulseaudio",
+      "custom/spotify"
+    ]
+  },
 
   "hyprland/workspaces": {
     "disable-scroll": true,
@@ -263,7 +269,7 @@
 
 
   "custom/cycle_wall":{
-    "format": "󰣇 ",
+    "format": "󰣇",
     // "interval": 1,
     "on-click": "python3 ~/.config/sys-scripts/background/background_only.py",
     "tooltip": false

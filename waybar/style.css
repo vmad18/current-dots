@@ -152,10 +152,13 @@ tooltip {
 
 @keyframes audio_stream {
   0% {
-    background-position: 0px 0px, 0px 0px, 0px 0px;
+    background-position: 0px 0px, -88px 0px, 0px 0px;
+  }
+  50% {
+    background-position: 0px 0px, 88px 0px, 0px 0px;
   }
   100% {
-    background-position: 0px 0px, 576px 0px, 384px 0px;
+    background-position: 0px 0px, -88px 0px, 0px 0px;
   }
 }
 
@@ -181,6 +184,7 @@ tooltip {
 #custom-power, 
 #clock, 
 #center_info,
+#media,
 #desktop_info,
 #battery, 
 #pulseaudio, 
@@ -475,25 +479,114 @@ tooltip {
 
 
 #custom-audio_viz {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.10) 22%, rgba(255, 255, 255, 0.00) 48%, rgba(255, 255, 255, 0.12) 100%), repeating-linear-gradient(102deg, rgba(155, 214, 255, 0.00) 0px, rgba(155, 214, 255, 0.00) 96px, rgba(155, 214, 255, 0.12) 164px, rgba(155, 189, 255, 0.18) 236px, rgba(155, 164, 255, 0.12) 310px, rgba(155, 164, 255, 0.00) 384px, rgba(155, 214, 255, 0.00) 576px), repeating-linear-gradient(90deg, rgba(128, 192, 238, 0.88) 0px, rgba(128, 192, 238, 0.84) 76px, rgba(133, 168, 240, 0.86) 152px, rgba(138, 146, 241, 0.88) 216px, rgba(133, 168, 240, 0.86) 280px, rgba(128, 192, 238, 0.84) 344px, rgba(128, 192, 238, 0.88) 384px);
-  background-size: 100% 100%, 576px 100%, 384px 100%;
-  animation: audio_stream 4.2s linear infinite;
-  color: @text;
+  background: linear-gradient(180deg, transparent, transparent), linear-gradient(110deg, rgba(235, 250, 255, 0.00) 10%, rgba(235, 250, 255, 0.06) 34%, rgba(235, 250, 255, 0.12) 50%, rgba(235, 250, 255, 0.06) 66%, rgba(235, 250, 255, 0.00) 90%), linear-gradient(105deg, rgba(128, 192, 238, 0.88) 0%, rgba(133, 168, 240, 0.86) 52%, rgba(150, 149, 241, 0.88) 100%);
+  background-size: 100% 100%, 160px 100%, 100% 100%;
+  background-repeat: no-repeat;
+  animation: audio_stream 12s ease-in-out infinite;
+  color: #f0f5ff;
   margin-left: 5px;
   min-width: 74px;
   padding-left: 8px;
   padding-right: 8px;
-  border: 1.8px solid rgba(230, 245, 255, 0.42);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42), inset 0 -1px 0 rgba(20, 30, 70, 0.25), inset 0 0 8px rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(230, 245, 255, 0.28);
+  box-shadow: none;
+  text-shadow: none;
+  transition-property: border-color;
+  transition-duration: 100ms;
+  transition-timing-function: ease-out;
   opacity: 0.92;
+}
+
+/* Let the reflection stop where it is when playback falls silent. */
+#custom-audio_viz.quiet,
+#custom-audio_viz.muted,
+#custom-audio_viz.error {
+  animation-play-state: paused;
+}
+
+/* Bass gently varies the thin border without adding depth. */
+#custom-audio_viz.light-0 {
+  border-color: rgba(230, 245, 255, 0.280);
+  box-shadow: none;
+}
+#custom-audio_viz.light-1 {
+  border-color: rgba(230, 245, 255, 0.290);
+  box-shadow: none;
+}
+#custom-audio_viz.light-2 {
+  border-color: rgba(230, 245, 255, 0.300);
+  box-shadow: none;
+}
+#custom-audio_viz.light-3 {
+  border-color: rgba(230, 245, 255, 0.310);
+  box-shadow: none;
+}
+#custom-audio_viz.light-4 {
+  border-color: rgba(230, 245, 255, 0.320);
+  box-shadow: none;
+}
+#custom-audio_viz.light-5 {
+  border-color: rgba(230, 245, 255, 0.330);
+  box-shadow: none;
+}
+#custom-audio_viz.light-6 {
+  border-color: rgba(230, 245, 255, 0.340);
+  box-shadow: none;
+}
+#custom-audio_viz.light-7 {
+  border-color: rgba(230, 245, 255, 0.350);
+  box-shadow: none;
+}
+#custom-audio_viz.light-8 {
+  border-color: rgba(230, 245, 255, 0.360);
+  box-shadow: none;
+}
+#custom-audio_viz.light-9 {
+  border-color: rgba(230, 245, 255, 0.370);
+  box-shadow: none;
+}
+#custom-audio_viz.light-10 {
+  border-color: rgba(230, 245, 255, 0.380);
+  box-shadow: none;
+}
+#custom-audio_viz.light-11 {
+  border-color: rgba(230, 245, 255, 0.390);
+  box-shadow: none;
+}
+#custom-audio_viz.light-12 {
+  border-color: rgba(230, 245, 255, 0.400);
+  box-shadow: none;
 }
 
 
 
 #pulseaudio {
   color: @text;
-  margin-right: 5px;
+  margin-right: 0px;
   margin-left: 12px;
+}
+
+/* Volume and Spotify share the same shell treatment as CPU/RAM. */
+#media {
+  margin-left: 12px;
+}
+
+#media #pulseaudio,
+#media #custom-spotify {
+  background: transparent;
+  margin: 0px;
+  border: 0px;
+  border-radius: 0px;
+  box-shadow: none;
+  opacity: 1;
+}
+
+#media #pulseaudio {
+  padding: 0px 5px 0px 0px;
+}
+
+#media #custom-spotify {
+  padding: 0px 0px 0px 5px;
 }
 
 
@@ -554,16 +647,139 @@ tooltip {
 
 
 
-#custom-cycle_wall{
-  background: rgb(155, 214, 255);
-  background: linear-gradient(45deg, rgba(155, 214, 255, 1) 0%, rgba(155, 214, 255, 0.9870801033591732) 35%, rgba(155,164,255,1) 87%, rgba(155,164,255,1) 90%, rgba(155,164,255,1) 100%);  color: @text;
-  background-size: 500% 500%;
-  animation: gradient 5s linear infinite;
-  font-weight:  bolder;
-  padding: 0px 10px;
+/* A soft halo lights the Arch glyph as the pale blue turns lavender. */
+@keyframes wallpaper_swirl {
+  0% {
+    background-size: 40px 40px, 70px 70px;
+  }
+  100% {
+    background-size: 80px 80px, 70px 70px;
+  }
+}
+
+/* Directional inset light moves around the rim without changing layout. */
+@keyframes wallpaper_rim {
+  0% {
+    box-shadow: inset 0 0 1px 1px rgba(235, 240, 255, 0.14), inset 0 1px 1px 0 rgba(219, 249, 255, 0.85);
+  }
+  25% {
+    box-shadow: inset 0 0 1px 1px rgba(235, 240, 255, 0.14), inset -1px 0 1px 0 rgba(223, 228, 255, 0.85);
+  }
+  50% {
+    box-shadow: inset 0 0 1px 1px rgba(235, 240, 255, 0.14), inset 0 -1px 1px 0 rgba(241, 221, 255, 0.85);
+  }
+  75% {
+    box-shadow: inset 0 0 1px 1px rgba(235, 240, 255, 0.14), inset 1px 0 1px 0 rgba(223, 228, 255, 0.85);
+  }
+  100% {
+    box-shadow: inset 0 0 1px 1px rgba(235, 240, 255, 0.14), inset 0 1px 1px 0 rgba(219, 249, 255, 0.85);
+  }
+}
+
+/* Independent noise fields follow irregular paths over a long cycle. */
+@keyframes wallpaper_cloud_flow {
+  0.00% { background-position: 0.00px 0.00px, 0.00px 0.00px; }
+  1.25% { background-position: 49.67px 34.48px, 18.44px 32.71px; }
+  2.50% { background-position: 79.75px 55.85px, 24.04px 58.65px; }
+  3.75% { background-position: 86.11px 58.85px, 9.86px 73.40px; }
+  5.00% { background-position: 81.73px 48.62px, -22.07px 76.37px; }
+  6.25% { background-position: 83.62px 36.33px, -61.92px 70.81px; }
+  7.50% { background-position: 97.78px 31.08px, -96.87px 62.45px; }
+  8.75% { background-position: 116.10px 33.80px, -117.32px 57.15px; }
+  10.00% { background-position: 127.49px 37.36px, -121.40px 58.63px; }
+  11.25% { background-position: 131.49px 32.67px, -115.83px 67.03px; }
+  12.50% { background-position: 140.64px 16.44px, -112.42px 78.89px; }
+  13.75% { background-position: 168.63px -5.17px, -122.23px 88.61px; }
+  15.00% { background-position: 215.53px -19.78px, -149.97px 90.67px; }
+  16.25% { background-position: 264.82px -16.65px, -191.50px 81.99px; }
+  17.50% { background-position: 295.78px 6.02px, -235.58px 63.27px; }
+  18.75% { background-position: 300.45px 39.58px, -269.03px 38.95px; }
+  20.00% { background-position: 289.83px 70.22px, -282.97px 15.80px; }
+  21.25% { background-position: 283.77px 87.53px, -276.98px 0.50px; }
+  22.50% { background-position: 294.10px 90.43px, -259.42px -2.68px; }
+  23.75% { background-position: 316.52px 86.61px, -243.45px 6.65px; }
+  25.00% { background-position: 338.00px 86.00px, -241.00px 25.00px; }
+  26.25% { background-position: 351.72px 93.01px, -257.24px 46.39px; }
+  27.50% { background-position: 364.50px 103.23px, -288.38px 64.67px; }
+  28.75% { background-position: 389.37px 106.73px, -323.77px 75.86px; }
+  30.00% { background-position: 430.63px 95.82px, -351.22px 79.54px; }
+  31.25% { background-position: 476.45px 71.58px, -363.03px 78.95px; }
+  32.50% { background-position: 506.98px 44.42px, -359.83px 79.53px; }
+  33.75% { background-position: 511.22px 28.15px, -350.29px 86.64px; }
+  35.00% { background-position: 497.13px 31.42px, -346.93px 103.32px; }
+  36.25% { background-position: 485.43px 52.43px, -360.01px 128.87px; }
+  37.50% { background-position: 492.64px 80.44px, -392.42px 158.89px; }
+  38.75% { background-position: 518.69px 103.07px, -438.05px 186.77px; }
+  40.00% { background-position: 549.89px 114.16px, -484.44px 205.99px; }
+  41.25% { background-position: 573.70px 117.00px, -518.53px 212.51px; }
+  42.50% { background-position: 590.58px 120.68px, -532.62px 206.19px; }
+  43.75% { background-position: 611.62px 132.33px, -527.92px 190.81px; }
+  45.00% { background-position: 644.93px 151.02px, -513.82px 172.63px; }
+  46.25% { background-position: 684.51px 167.65px, -503.35px 158.04px; }
+  47.50% { background-position: 713.35px 171.05px, -507.00px 151.29px; }
+  48.75% { background-position: 718.47px 156.08px, -527.78px 152.97px; }
+  50.00% { background-position: 704.00px 128.00px, -560.00px 160.00px; }
+  51.25% { background-position: 689.53px 99.92px, -592.22px 167.03px; }
+  52.50% { background-position: 694.65px 84.95px, -613.00px 168.71px; }
+  53.75% { background-position: 723.49px 88.35px, -616.65px 161.96px; }
+  55.00% { background-position: 763.07px 104.98px, -606.18px 147.37px; }
+  56.25% { background-position: 796.38px 123.67px, -592.08px 129.19px; }
+  57.50% { background-position: 817.42px 135.32px, -587.38px 113.81px; }
+  58.75% { background-position: 834.30px 139.00px, -601.47px 107.49px; }
+  60.00% { background-position: 858.11px 141.84px, -635.56px 114.01px; }
+  61.25% { background-position: 889.31px 152.93px, -681.95px 133.23px; }
+  62.50% { background-position: 915.36px 175.56px, -727.58px 161.11px; }
+  63.75% { background-position: 922.57px 203.57px, -759.99px 191.13px; }
+  65.00% { background-position: 910.87px 224.58px, -773.07px 216.68px; }
+  66.25% { background-position: 896.78px 227.85px, -769.71px 233.36px; }
+  67.50% { background-position: 901.02px 211.58px, -760.17px 240.47px; }
+  68.75% { background-position: 931.55px 184.42px, -756.97px 241.05px; }
+  70.00% { background-position: 977.37px 160.18px, -768.78px 240.46px; }
+  71.25% { background-position: 1018.63px 149.27px, -796.23px 244.14px; }
+  72.50% { background-position: 1043.50px 152.77px, -831.62px 255.33px; }
+  73.75% { background-position: 1056.28px 162.99px, -862.76px 273.61px; }
+  75.00% { background-position: 1070.00px 170.00px, -879.00px 295.00px; }
+  76.25% { background-position: 1091.48px 169.39px, -876.55px 313.35px; }
+  77.50% { background-position: 1113.90px 165.57px, -860.58px 322.68px; }
+  78.75% { background-position: 1124.23px 168.47px, -843.02px 319.50px; }
+  80.00% { background-position: 1118.17px 185.78px, -837.03px 304.20px; }
+  81.25% { background-position: 1107.55px 216.42px, -850.97px 281.05px; }
+  82.50% { background-position: 1112.22px 249.98px, -884.42px 256.73px; }
+  83.75% { background-position: 1143.18px 272.65px, -928.50px 238.01px; }
+  85.00% { background-position: 1192.47px 275.78px, -970.03px 229.33px; }
+  86.25% { background-position: 1239.37px 261.17px, -997.77px 231.39px; }
+  87.50% { background-position: 1267.36px 239.56px, -1007.58px 241.11px; }
+  88.75% { background-position: 1276.51px 223.33px, -1004.17px 252.97px; }
+  90.00% { background-position: 1280.51px 218.64px, -998.60px 261.37px; }
+  91.25% { background-position: 1291.90px 222.20px, -1002.68px 262.85px; }
+  92.50% { background-position: 1310.22px 224.92px, -1023.13px 257.55px; }
+  93.75% { background-position: 1324.38px 219.67px, -1058.08px 249.19px; }
+  95.00% { background-position: 1326.27px 207.38px, -1097.93px 243.63px; }
+  96.25% { background-position: 1321.89px 197.15px, -1129.86px 246.60px; }
+  97.50% { background-position: 1328.25px 200.15px, -1144.04px 261.35px; }
+  98.75% { background-position: 1358.33px 221.52px, -1138.44px 287.29px; }
+  100.00% { background-position: 1408.00px 256.00px, -1120.00px 320.00px; }
+}
+
+#custom-cycle_wall {
+  background-color: rgba(143, 197, 235, 0.6);
+  background-image: url("wallpaper-cloud-blue.svg"), url("wallpaper-cloud-lavender.svg");
+  background-size: 128px 128px, 160px 160px;
+  background-repeat: repeat;
+  animation: wallpaper_cloud_flow 197s linear infinite;
+  color: #d4d7dc;
+  font-size: 15px;
+  font-weight: normal;
+  /* The glyph ink overhangs its advance by 4px on the right. */
+  padding: 0px 12px 0px 8px;
   margin: 3px 0px;
-  border-radius: 15px;
-  margin-right: 5px;
+  border: 0px;
+  border-radius: 11px;
+  margin-left: 0px;
+  margin-right: 0px;
+  box-shadow: none;
+  opacity: 0.8;
+  text-shadow: none;
 }
 
 /* Calendar hover dashboard and short event-start pulse. */

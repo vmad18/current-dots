@@ -19,6 +19,17 @@ monitor rule. Other paths may still be specific to this machine.
 `hypr/hyprland.lua.future` is an inactive draft with its own monitor examples;
 review it before activation. It is not the active config.
 
+## Waybar layout
+
+Volume/microphone and Spotify share one island on the left, followed by the
+Codex agent tracker. The clock stays centered. The wallpaper changer sits on the
+right before the desktop/workspace island, hardware metrics, and tray.
+
+The wallpaper island uses `waybar/wallpaper-cloud-blue.svg` and
+`waybar/wallpaper-cloud-lavender.svg` for its animated blue/purple clouds; restore
+both alongside `style.css`. The audio visualizer is disabled in the layout, but
+its module configuration, script, and styling remain available to re-enable.
+
 ## Calendar clock dependency
 
 The task database, calendar synchronization, tooltip formatting, and reminder
