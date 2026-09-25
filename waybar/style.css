@@ -731,11 +731,11 @@ tooltip {
 }
 
 #custom-cycle_wall {
-  background-color: rgba(143, 197, 235, 0.6);
+  background-color: @backgroundlight;
   background-image: url("wallpaper-cloud-blue.svg"), url("wallpaper-cloud-lavender.svg");
   background-size: 128px 128px, 160px 160px;
   background-repeat: repeat;
-  animation: wallpaper_cloud_flow 197s linear infinite;
+  animation: wallpaper_cloud_flow 157.5s linear infinite;
   color: #d4d7dc;
   font-size: 15px;
   font-weight: normal;
