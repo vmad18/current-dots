@@ -6,7 +6,7 @@
   
   "modules-left":   [ 
                       "group/media",
-                      "custom/spotify"],
+                      "cffi/spotify"],
  
 
   "modules-center": [
@@ -32,6 +32,8 @@
   },
 
   "hyprland/workspaces": {
+    "all-outputs": false,
+    "active-only": false,
     "disable-scroll": true,
     "on-click": "activate"
 
@@ -135,6 +137,13 @@
   },
 
 
+  "custom/power_mode": {
+    "exec": "python3 ~/.config/sys-scripts/battery-power-mode/waybar-status.py",
+    "return-type": "json",
+    "interval": 5,
+    "tooltip": true
+  },
+
   "battery": {
     "states": {
       "good": 95,
@@ -145,7 +154,7 @@
     "format-charging": " {capacity}%",
     "format-plugged": " {capacity}%",
     "format-alt": "{time} {icon}",
-    "format-icons": ["", "", "", "", "", "", "", "", "", "", ""]
+    "format-icons": ["", "", "", "", ""]
   },
 
 
@@ -156,9 +165,9 @@
 
 
   "custom/clock_weather": {
-    "exec": "exec /home/v18/Documents/Code/projects/start-up-task-list/.venv/bin/tasks waybar watch --weather-script /home/v18/.config/waybar/scripts/clock_weather.py",
+    "exec": "python3 ~/.config/waybar/scripts/clock_weather.py",
     "return-type": "json",
-    "restart-interval": 2,
+    "interval": 60,
     "exec-on-event": false,
     "escape": false,
     "tooltip": true
@@ -256,7 +265,9 @@
     "orientation": "inherit",
     "modules": [
       "cpu",
-      "memory"
+      "memory",
+      "battery",
+      "custom/power_mode"
     ]
   },
 
@@ -269,10 +280,13 @@
   },
 
 
-  // /usr/bin/python3 ~/.config/waybar/scripts/mediaplayer.py --player spotify
-  "custom/spotify": {
-    "exec": "sh ~/.config/sys-scripts/spotify/scroll_status.sh",
-    "format": " | {}",
+  // Native smooth-scrolling tracks/status from Documents/Code/projects/spotify-scroll-main
+  "cffi/spotify": {
+    "module_path": "/home/v18/.local/lib/waybar/libspotify_scroll.so",
+    "player": "spotify",
+    "width": 13,
+    "speed": 4.5,
+    "poll-ms": 500,
     "tooltip": false,
     "on-click": "playerctl play-pause --player=spotify",
     "on-scroll-up": "playerctl next --player=spotify",

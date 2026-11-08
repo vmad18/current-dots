@@ -526,9 +526,14 @@ def tmux_command(*arguments: str) -> bool:
         return False
 
 
-def dispatch(dispatcher: str, argument: str) -> bool:
+def lua_string(value: str) -> str:
+    """Quote UTF-8 as Lua decimal byte escapes, including control characters."""
+    return '"' + ''.join(f'\\{byte:03d}' for byte in value.encode('utf-8')) + '"'
+
+
+def dispatch(expression: str) -> bool:
     try:
-        response = hypr_request(f"dispatch {dispatcher} {argument}")
+        response = hypr_request(f"dispatch {expression}")
         if response.strip().lower().startswith("ok"):
             return True
     except (OSError, socket.timeout):
@@ -536,7 +541,7 @@ def dispatch(dispatcher: str, argument: str) -> bool:
 
     try:
         result = subprocess.run(
-            ["hyprctl", "dispatch", dispatcher, argument],
+            ["hyprctl", "dispatch", expression],
             check=False,
             capture_output=True,
             text=True,
@@ -1236,13 +1241,13 @@ def focus_agent(agent: dict) -> bool:
     if not address and not window_pid:
         return False
     if workspace:
-        dispatch("workspace", workspace)
+        dispatch(f"hl.dsp.focus({{ workspace = {lua_string(workspace)} }})")
 
     window_focused = False
     if address:
-        window_focused = dispatch("focuswindow", f"address:{address}")
+        window_focused = dispatch(f"hl.dsp.focus({{ window = {lua_string(f'address:{address}')} }})")
     if not window_focused and window_pid:
-        window_focused = dispatch("focuswindow", f"pid:{window_pid}")
+        window_focused = dispatch(f'hl.dsp.focus({{ window = "pid:{window_pid}" }})')
     if not window_focused:
         return False
 

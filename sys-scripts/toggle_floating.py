@@ -234,7 +234,10 @@ def saved_geometry(
 
 def dispatch(commands: list[str]) -> None:
     result = run_hyprctl("--batch", " ; ".join(f"dispatch {cmd}" for cmd in commands))
-    if result.returncode != 0:
+    replies = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+    if result.returncode != 0 or len(replies) != len(commands) or any(
+        reply.lower() != "ok" for reply in replies
+    ):
         raise RuntimeError(result.stderr.strip() or result.stdout.strip() or "dispatch failed")
 
 
@@ -256,7 +259,7 @@ def toggle_floating() -> None:
                 "saved_at": time.time(),
             }
 
-        dispatch([f"settiled address:{address}"])
+        dispatch([f'hl.dsp.window.float({{ window = "address:{address}", action = "off" }})'])
         return
 
     with locked_state() as state:
@@ -272,9 +275,9 @@ def toggle_floating() -> None:
     width, height = size
     dispatch(
         [
-            f"setfloating address:{address}",
-            f"resizewindowpixel exact {width} {height},address:{address}",
-            f"movewindowpixel exact {x} {y},address:{address}",
+            f'hl.dsp.window.float({{ window = "address:{address}", action = "on" }})',
+            f'hl.dsp.window.resize({{ window = "address:{address}", x = {width}, y = {height}, relative = false }})',
+            f'hl.dsp.window.move({{ window = "address:{address}", x = {x}, y = {y}, relative = false }})',
         ]
     )
 

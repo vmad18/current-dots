@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import subprocess
 from time import sleep
 import argparse
 
@@ -21,7 +22,7 @@ class Theme:
         self.modules = modules
 
     def run(self):
-        os.system(f"sh {script} {self.img}")
+        subprocess.run(["sh", os.path.expanduser(script), os.path.expanduser(self.img)], check=True)
         sleep(1.5)
         # os.chdir("/home/v18/.config/style-change")
         # os.system(f"sh style-change.sh change {self.modules}")
@@ -57,6 +58,11 @@ def main():
     
 
 
+    # This laptop has only a subset of the wallpaper collection.
+    themes = tuple(theme for theme in themes if os.path.isfile(os.path.expanduser(theme.img)))
+    if not themes:
+        raise SystemExit("No configured wallpaper images are available on this machine.")
+
     f = open(f"{idx_path}", "r+")
     idx = str(f.read())
     f = open(f"{idx_path}", "w")
@@ -74,4 +80,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -31,6 +31,11 @@ require("lazy").setup({
   { import = "plugins" },
 }, lazy_config)
 
+-- Rebuild generated highlights when moving this config to another machine.
+if not vim.uv.fs_stat(vim.g.base46_cache .. "defaults") then
+  require("base46").load_all_highlights()
+end
+
 -- load theme
 dofile(vim.g.base46_cache .. "defaults")
 dofile(vim.g.base46_cache .. "statusline")

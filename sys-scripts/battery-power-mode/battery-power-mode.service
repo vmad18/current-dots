@@ -1,0 +1,8 @@
+[Unit]
+Description=Select laptop power mode from battery percentage
+ConditionPathExists=/sys/class/power_supply/BAT0/capacity
+ConditionPathExists=/sys/firmware/acpi/platform_profile
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/battery-power-mode

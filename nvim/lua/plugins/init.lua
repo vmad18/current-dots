@@ -1,4 +1,17 @@
 return {
+  { "nvchad/ui", branch = "v3.0" },
+  { "nvchad/base46", branch = "v3.0" },
+  {
+    "mason-org/mason.nvim",
+    opts = { ensure_installed = { "rust-analyzer", "pyright", "clangd" } },
+  },
+  {
+    "rust-lang/rust.vim",
+    ft = "rust",
+    init = function()
+      vim.g.rustfmt_autosave = 1
+    end,
+  },
   {
     "stevearc/conform.nvim",
     -- event = 'BufWritePre', -- uncomment for format on save

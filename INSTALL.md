@@ -54,12 +54,12 @@ sudo, driver changes, service changes, or replacing the user's login shell.
 
 ## 2. Resolve compositor compatibility first
 
-This repository's active snapshot is `hypr/hyprland.conf`. It also contains
-`hypr/hyprland.lua.future`, an **inactive draft**, not a ready-made replacement.
+On `laptop-rev`, the active snapshot is `hypr/hyprland.lua` (Hyprland 0.57 Lua API),
+with `theme.lua` and `colors.conf`. Read LAPTOP-RESTORE.md before installation.
 
 Check the installed version's syntax and active config path. Current upstream
 documentation uses Lua, while the archived 0.54 documentation describes the
-hyprlang syntax used by this snapshot. Do not blindly paste legacy rules into
+hyprlang syntax used by older revisions of this repository. Do not blindly paste legacy rules into
 Lua, activate the draft, or downgrade the system to fit the snapshot. If migration
 is needed, prepare and validate it against the installed version before activation.
 
@@ -193,7 +193,7 @@ theme dependency by default.
 
 ## 6. Adapt the known machine-specific details
 
-- **GPU:** `hypr/hyprland.conf` sets NVIDIA-related environment variables. Verify
+- **GPU:** Older revisions set NVIDIA-related environment variables. This laptop uses AMD. Verify
   the destination GPU/driver before retaining them; check `nvidia-smi` only on an
   NVIDIA system. Follow current vendor/compositor guidance. Never install drivers
   or copy NVIDIA settings onto AMD/Intel machines as part of a blind dotfile copy.
@@ -235,8 +235,7 @@ theme dependency by default.
   from `group/media.modules` and keep the volume control working. Fully restart
   the owning Waybar process after rebuilding the same library path, or load a
   new filename. A config reload alone can reuse the old library.
-- **Agent tracker:** README documents intentional differences between the repo's
-  tracker and the original live copy. Preserve/review that implementation. Set up
+- **Agent tracker:** This branch snapshots the live laptop tracker. Review its implementation. Set up
   its expected local integration separately; do not migrate Codex credentials.
   Install `codex_scan_palette.py` alongside `codex_agents.py`. The helper shares
   active colors across monitors and changes them about every 30 seconds. Its

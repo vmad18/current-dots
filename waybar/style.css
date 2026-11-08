@@ -429,7 +429,7 @@ tooltip {
   color: @text;
   background: transparent;
   margin: 0px;
-  padding: 0px 0px 0px 5px;
+  padding: 0px 5px;
   border: 0px;
   border-radius: 0px;
   box-shadow: none;
@@ -561,12 +561,34 @@ tooltip {
 
 
 #battery {
-  color:  @text;
-  margin-left: 5px;
-  margin-right: 5px;
+  color: @text;
+  background: transparent;
+  margin: 0px;
+  padding: 0px 0px 0px 5px;
+  border: 0px;
+  border-radius: 0px;
+  box-shadow: none;
+  opacity: 1;
 }
 
 
+
+#custom-power_mode {
+  padding: 0px 0px 0px 8px;
+  color: #a6adc8;
+}
+
+#custom-power_mode.low-power {
+  color: #a6e3a1;
+}
+
+#custom-power_mode.balanced {
+  color: #89b4fa;
+}
+
+#custom-power_mode.performance {
+  color: #fab387;
+}
 
 #backlight {
   color: @text;
@@ -752,4 +774,4 @@ tooltip {
 }
 
 /* Calendar hover dashboard and short event-start pulse. */
-@import "/home/v18/Documents/Code/projects/start-up-task-list/integrations/waybar-calendar.css";
+/* Calendar integration is optional; this laptop uses the clock/weather helper. */

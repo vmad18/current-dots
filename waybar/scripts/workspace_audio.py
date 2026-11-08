@@ -228,8 +228,10 @@ def current_numeric_workspaces():
 
 
 def rename_workspace(workspace_id, name):
+    # Decimal byte escapes are valid Lua and keep arbitrary UTF-8 names quoted.
+    lua_name = '"' + ''.join(f'\\{byte:03d}' for byte in name.encode('utf-8')) + '"'
     subprocess.run(
-        ["hyprctl", "dispatch", "renameworkspace", str(workspace_id), name],
+        ["hyprctl", "dispatch", f"hl.dsp.workspace.rename({{ workspace = {int(workspace_id)}, name = {lua_name} }})"],
         check=False,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# AC power takes priority; on battery, 25% and 90% both use balanced mode.
+profile_for_capacity() {
+    local capacity=$1 plugged_in=${2:-0}
+    if [[ $plugged_in == 1 ]]; then
+        printf '%s\n' balanced
+    elif (( capacity < 25 )); then
+        printf '%s\n' low-power
+    elif (( capacity > 90 )); then
+        printf '%s\n' performance
+    else
+        printf '%s\n' balanced
+    fi
+}
+
+main() {
+    local capacity target current plugged_in=0 status
+    status=$(cat /sys/class/power_supply/BAT0/status)
+    # Stay balanced on AC even when the battery is full or charging is paused.
+    if [[ $(cat /sys/class/power_supply/ADP0/online 2>/dev/null || true) == 1 || $status == Charging ]]; then
+        plugged_in=1
+    fi
+    capacity=$(cat /sys/class/power_supply/BAT0/capacity)
+    if [[ ! $capacity =~ ^[0-9]{1,3}$ ]]; then
+        echo "Invalid battery capacity: $capacity" >&2
+        return 1
+    fi
+    capacity=$((10#$capacity))
+    if (( capacity > 100 )); then
+        echo "Battery capacity exceeds 100: $capacity" >&2
+        return 1
+    fi
+    target=$(profile_for_capacity "$capacity" "$plugged_in")
+    current=$(cat /sys/firmware/acpi/platform_profile)
+    if [[ ${1:-} == --dry-run ]]; then
+        printf 'Battery: %s%%; AC/charging: %s; current: %s; target: %s\n' "$capacity" "$plugged_in" "$current" "$target"
+    elif [[ $current != "$target" ]]; then
+        printf '%s\n' "$target" > /sys/firmware/acpi/platform_profile
+        printf 'Battery: %s%%; changed %s -> %s\n' "$capacity" "$current" "$target"
+    fi
+}
+
+if [[ ${BASH_SOURCE[0]} == "$0" ]]; then
+    main "$@"
+fi

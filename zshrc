@@ -77,8 +77,6 @@ ZSH_THEME="zap-prompt"
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
 
-source ~/.oh-my-zsh/plugins/supercharge/supercharge.plugin.zsh
-
 plugins=(
 	git
 	supercharge
@@ -120,12 +118,12 @@ alias ml-env="source '$(echo $ml_env)'"
 alias change_bg="sh ~/.config/sys-scripts/background/randbg.sh $1"
 alias img_view="sxiv $1"
 alias save-style="sh ~/.config/style-change/save_current_state.sh $1"
-alias docker="sudo docker"
 alias shellm="~/./shellm"
 alias vim="nvim"
 alias ssh_tuo="TERM=xterm ssh -l madan2 tuo.llnl.gov"
-
+alias start-dock="sudo systemctl start docker"
 alias strg="df -h ."
+
 
 # export MANPATH="/usr/local/man:$MANPATH"
 
@@ -150,3 +148,11 @@ alias strg="df -h ."
 # Example aliases
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
+
+# >>> Codex installer >>>
+export PATH="/home/v18/.local/bin:$PATH"
+# Private credentials belong in ~/.config/zsh/env.zsh (excluded from Git).
+# <<< Codex installer <<<
+
+# Keep PATH entries unique when plugins and installers add the same directory.
+typeset -U path PATH
